@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
+import 'package:tiltawort/tilt/units.dart';
 
 void main() {
   late Directory dir;
@@ -42,7 +43,7 @@ void main() {
     final text = await file.readAsString();
     final lines = text.trim().split(RegExp(r'\r?\n'));
     expect(lines.first, CsvLogStore.header);
-    expect(CsvLogStore.header, 'Timestamp,Timepoint,SG,Temp,Color,Beer,Comment');
+    expect(CsvLogStore.header, 'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment');
     expect(lines, hasLength(3));
     expect(lines[1], contains('Pink'));
     expect(lines[1], contains('House Pale'));
@@ -131,5 +132,24 @@ void main() {
     await store.endLog();
     expect(store.lastWrite, isNull);
     expect(store.shouldWrite(t0.add(const Duration(hours: 1)), 900), isFalse);
+  });
+
+  test('row writes Plato from SG and TempUnit', () async {
+    final store = CsvLogStore(dir);
+    final start = DateTime.utc(2026, 10, 25, 13, 0);
+    final file = await store.startLog(color: 'Pink', beer: 'Pale', at: start);
+    await store.append(
+      timestamp: start,
+      sg: 1.040,
+      temp: 68.0,
+      color: 'Pink',
+      beer: 'Pale',
+      tempUnit: 'F',
+    );
+    final lines = (await file.readAsString()).trim().split(RegExp(r'\r?\n'));
+    expect(lines.first, 'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment');
+    expect(lines[1], contains('1.04'));
+    expect(lines[1], contains(sgToPlato(1.040).toStringAsFixed(2)));
+    expect(lines[1], contains(',F,'));
   });
 }

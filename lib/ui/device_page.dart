@@ -123,6 +123,7 @@ class _DevicePageState extends State<DevicePage> {
         comment: '',
         force: false,
         intervalSeconds: _prefs.logIntervalSeconds,
+        tempUnit: _prefs.tempUnit,
       );
     }
     if (mounted) setState(() => _view = view);
@@ -734,6 +735,7 @@ class _DevicePageState extends State<DevicePage> {
       comment: _comment.text,
       force: true,
       intervalSeconds: _prefs.logIntervalSeconds,
+      tempUnit: _prefs.tempUnit,
     );
     _comment.clear();
     await _refreshFiles();

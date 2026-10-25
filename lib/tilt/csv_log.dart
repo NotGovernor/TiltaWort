@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:tiltawort/tilt/units.dart';
+
 /// Recording UI is the open file, not the leftover prefs.logging flag.
 bool recordingUi({required bool prefsLogging, required bool fileOpen}) =>
     fileOpen;
@@ -41,7 +43,7 @@ String recordingStatusLine({
 class CsvLogStore {
   CsvLogStore(this.directory, {this.reveal});
 
-  static const header = 'Timestamp,Timepoint,SG,Temp,Color,Beer,Comment';
+  static const header = 'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment';
 
   final Directory directory;
   final Future<void> Function(String path)? reveal;
@@ -94,6 +96,7 @@ class CsvLogStore {
     String comment = '',
     bool force = false,
     int intervalSeconds = 0,
+    String tempUnit = 'F',
   }) async {
     if (active == null || logStart == null) return;
     if (!force && !shouldWrite(timestamp, intervalSeconds)) return;
@@ -103,7 +106,9 @@ class CsvLogStore {
       timestamp.toIso8601String(),
       timepoint.toStringAsFixed(6),
       sg.toString(),
+      sgToPlato(sg).toStringAsFixed(2),
       temp.toString(),
+      _csv(tempUnit),
       _csv(color),
       _csv(beer),
       _csv(comment),
