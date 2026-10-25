@@ -13,6 +13,59 @@ abstract final class TiltColors {
   static const muted = Color(0xFF8B9388);
 }
 
+class TiltPalette {
+  const TiltPalette({
+    required this.primary,
+    required this.secondary,
+    required this.tertiary,
+    required this.neutral,
+    required this.onPrimary,
+    required this.onTertiary,
+    required this.surface,
+    required this.ink,
+    required this.muted,
+  });
+
+  final Color primary;
+  final Color secondary;
+  final Color tertiary;
+  final Color neutral;
+  final Color onPrimary;
+  final Color onTertiary;
+  final Color surface;
+  final Color ink;
+  final Color muted;
+
+  static const dark = TiltPalette(
+    primary: TiltColors.primary,
+    secondary: TiltColors.secondary,
+    tertiary: TiltColors.tertiary,
+    neutral: TiltColors.neutral,
+    onPrimary: TiltColors.onPrimary,
+    onTertiary: TiltColors.onTertiary,
+    surface: TiltColors.surface,
+    ink: TiltColors.ink,
+    muted: TiltColors.muted,
+  );
+
+  /// Sun on a greenhouse wall — not an invert of dark.
+  static const light = TiltPalette(
+    primary: Color(0xFF6B5010),
+    secondary: Color(0xFF4A4E48),
+    tertiary: Color(0xFF1E4A62),
+    neutral: Color(0xFFF3EFE4),
+    onPrimary: Color(0xFFF3EFE4),
+    onTertiary: Color(0xFFF3EFE4),
+    surface: Color(0xFFE8E2D4),
+    ink: Color(0xFF121510),
+    muted: Color(0xFF5A5E58),
+  );
+
+  static TiltPalette of(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.light ? light : dark;
+  }
+}
+
 Color factorySwatch(String color) {
   switch (color) {
     case 'Red':
@@ -55,6 +108,32 @@ ThemeData tiltDarkTheme() {
     appBarTheme: const AppBarTheme(
       backgroundColor: TiltColors.neutral,
       foregroundColor: TiltColors.ink,
+      elevation: 0,
+      scrolledUnderElevation: 0,
+    ),
+  );
+}
+
+ThemeData tiltLightTheme() {
+  const p = TiltPalette.light;
+  return ThemeData(
+    brightness: Brightness.light,
+    useMaterial3: true,
+    scaffoldBackgroundColor: p.neutral,
+    canvasColor: p.neutral,
+    fontFamily: 'Sora',
+    colorScheme: ColorScheme.light(
+      primary: p.primary,
+      onPrimary: p.onPrimary,
+      secondary: p.secondary,
+      tertiary: p.tertiary,
+      onTertiary: p.onTertiary,
+      surface: p.surface,
+      onSurface: p.ink,
+    ),
+    appBarTheme: AppBarTheme(
+      backgroundColor: p.neutral,
+      foregroundColor: p.ink,
       elevation: 0,
       scrolledUnderElevation: 0,
     ),

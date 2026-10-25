@@ -26,3 +26,8 @@ double applyCal(double uncalSg, List<CalPoint> points) {
   }
   return uncalSg;
 }
+
+/// App-side water shortcut. Does not tare the float.
+CalPoint waterCal({required double currentRaw}) =>
+    CalPoint(uncalSg: currentRaw, actualSg: 1.000);
+

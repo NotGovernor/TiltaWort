@@ -20,6 +20,22 @@ class TiltPrefs {
 
   static const defaults = TiltPrefs();
 
+  TiltPrefs copyWith({
+    String? name,
+    String? tempUnit,
+    String? gravityUnit,
+    List<CalPoint>? cal,
+    bool? logging,
+  }) {
+    return TiltPrefs(
+      name: name ?? this.name,
+      tempUnit: tempUnit ?? this.tempUnit,
+      gravityUnit: gravityUnit ?? this.gravityUnit,
+      cal: cal ?? this.cal,
+      logging: logging ?? this.logging,
+    );
+  }
+
   Map<String, dynamic> toJson() => {
         'name': name,
         'tempUnit': tempUnit,

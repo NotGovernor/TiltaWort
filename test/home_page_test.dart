@@ -147,7 +147,7 @@ void main() {
     expect(find.textContaining('Connected'), findsNothing);
   });
 
-  testWidgets('gear opens stub settings', (tester) async {
+  testWidgets('gear opens settings', (tester) async {
     final scanner = FakeTiltScanner(script: const []);
     await tester.pumpWidget(TiltawortApp(scanner: scanner, seed: const []));
     await tester.pump();
@@ -155,6 +155,26 @@ void main() {
     await tester.tap(find.byTooltip('App settings'));
     await tester.pumpAndSettle();
     expect(find.text('App Settings'), findsOneWidget);
+  });
+
+  testWidgets('tap tile opens device', (tester) async {
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    final scanner = FakeTiltScanner(
+      script: [
+        TiltAdvertisementEvent(advertisement: _pink, receivedAt: t0, rssiDbm: -97),
+      ],
+    );
+    await _pumpHome(
+      tester,
+      scanner: scanner,
+      now: () => t0,
+      names: {FakeTiltScanner.pinkUuid: 'House Pale'},
+    );
+    await tester.tap(find.text('Pink'));
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Back'), findsOneWidget);
+    expect(find.textContaining('Connected'), findsNothing);
   });
 
   test('kUseFakeScanner stays true', () {

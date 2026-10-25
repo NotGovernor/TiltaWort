@@ -1,20 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:tiltawort/tilt/csv_log.dart';
+import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/models.dart';
+import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
+import 'package:tiltawort/tilt/units.dart';
 import 'package:tiltawort/ui/chamfer.dart';
+import 'package:tiltawort/ui/device_page.dart';
 import 'package:tiltawort/ui/home_status.dart';
-import 'package:tiltawort/ui/settings_stub.dart';
+import 'package:tiltawort/ui/settings_page.dart';
 import 'package:tiltawort/ui/theme.dart';
-
-String formatSg(double sg, {required bool isPro}) =>
-    sg.toStringAsFixed(isPro ? 4 : 3);
-
-String formatTempF(double tempF, {required bool isPro}) {
-  if (isPro) return '${tempF.toStringAsFixed(1)} °F';
-  return '${tempF.round()} °F';
-}
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -23,12 +21,24 @@ class HomePage extends StatefulWidget {
     this.seed = const [],
     this.now,
     this.names = const {},
+    this.prefs,
+    this.history,
+    this.logs,
+    this.themeMode = ThemeMode.dark,
+    this.onThemeMode,
+    this.version = '1.0.0',
   });
 
   final TiltScanner scanner;
   final List<TiltView> seed;
   final DateTime Function()? now;
   final Map<String, String> names;
+  final PrefsStore? prefs;
+  final SessionHistory? history;
+  final CsvLogStore? logs;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeMode;
+  final String version;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -40,12 +50,14 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<TiltAdvertisementEvent>? _ads;
   StreamSubscription<RadioState>? _radioSub;
   Timer? _tick;
+  late final SessionHistory _history;
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    _history = widget.history ?? SessionHistory();
     for (final tile in widget.seed) {
       _tiles[tile.uuid] = tile;
     }
@@ -63,8 +75,31 @@ class _HomePageState extends State<HomePage> {
     final uuid = event.advertisement.uuid;
     final name = widget.names[uuid] ?? _tiles[uuid]?.name ?? '';
     final view = TiltView.fromEvent(event, name: name);
+    _history.add(
+      uuid,
+      SessionSample(at: view.lastPacket, sg: view.calSg, tempF: view.calTempF),
+    );
     if (!mounted) return;
     setState(() => _tiles[uuid] = view);
+  }
+
+  void _openDevice(TiltView tile) {
+    final prefs = widget.prefs ??
+        PrefsStore(File('${Directory.systemTemp.path}/tiltawort-prefs.json'));
+    final logs = widget.logs ??
+        CsvLogStore(Directory('${Directory.systemTemp.path}/tiltawort-logs'));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => DevicePage(
+          scanner: widget.scanner,
+          initial: _tiles[tile.uuid] ?? tile,
+          prefs: prefs,
+          history: _history,
+          logs: logs,
+          now: widget.now,
+        ),
+      ),
+    );
   }
 
   @override
@@ -99,8 +134,9 @@ class _HomePageState extends State<HomePage> {
       tileCount: tiles.length,
     );
 
+    final palette = TiltPalette.of(context);
     return Scaffold(
-      backgroundColor: TiltColors.neutral,
+      backgroundColor: palette.neutral,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -111,7 +147,12 @@ class _HomePageState extends State<HomePage> {
                 onGear: () {
                   Navigator.of(context).push(
                     MaterialPageRoute<void>(
-                      builder: (_) => const SettingsStubPage(),
+                      builder: (_) => SettingsPage(
+                        themeMode: widget.themeMode,
+                        onThemeMode: widget.onThemeMode ?? (_) {},
+                        version: widget.version,
+                        radio: _radio,
+                      ),
                     ),
                   );
                 },
@@ -145,7 +186,11 @@ class _HomePageState extends State<HomePage> {
                               for (final tile in tiles)
                                 SizedBox(
                                   width: tileWidth,
-                                  child: TiltTile(view: tile, now: now),
+                                  child: TiltTile(
+                                    view: tile,
+                                    now: now,
+                                    onTap: () => _openDevice(tile),
+                                  ),
                                 ),
                             ],
                           ),
@@ -224,19 +269,32 @@ class _RadioOffBanner extends StatelessWidget {
 }
 
 class TiltTile extends StatelessWidget {
-  const TiltTile({super.key, required this.view, required this.now});
+  const TiltTile({
+    super.key,
+    required this.view,
+    required this.now,
+    this.onTap,
+  });
 
   final TiltView view;
   final DateTime now;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
+    final palette = TiltPalette.of(context);
     final live = view.isLiveAt(now);
-    final ink = live ? TiltColors.ink : TiltColors.secondary;
-    final readout = live ? TiltColors.primary : TiltColors.secondary;
+    final ink = live ? palette.ink : palette.secondary;
+    final readout = live ? palette.primary : palette.secondary;
     final name = view.name.trim();
 
-    return ConstrainedBox(
+    return Semantics(
+      button: true,
+      label: name.isEmpty ? view.color : '${view.color} $name',
+      child: GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 88),
       child: ChamferPlate(
         chamfer: 12,
@@ -293,6 +351,8 @@ class TiltTile extends StatelessWidget {
           ],
         ),
       ),
+    ),
+    ),
     );
   }
 }

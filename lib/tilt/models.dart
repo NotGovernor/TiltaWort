@@ -30,6 +30,30 @@ class TiltView {
   bool isLiveAt(DateTime now) =>
       now.difference(lastPacket) <= const Duration(seconds: 30);
 
+  TiltView copyWith({
+    String? name,
+    double? rawSg,
+    double? rawTempF,
+    double? calSg,
+    double? calTempF,
+    int? rssiDbm,
+    DateTime? lastPacket,
+    bool clearRssi = false,
+  }) {
+    return TiltView(
+      uuid: uuid,
+      color: color,
+      name: name ?? this.name,
+      rawSg: rawSg ?? this.rawSg,
+      rawTempF: rawTempF ?? this.rawTempF,
+      calSg: calSg ?? this.calSg,
+      calTempF: calTempF ?? this.calTempF,
+      isPro: isPro,
+      rssiDbm: clearRssi ? null : (rssiDbm ?? this.rssiDbm),
+      lastPacket: lastPacket ?? this.lastPacket,
+    );
+  }
+
   factory TiltView.fromEvent(
     TiltAdvertisementEvent event, {
     String name = '',

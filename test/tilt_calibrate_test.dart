@@ -18,4 +18,10 @@ void main() {
     expect(applyCal(0.990, pts), closeTo(1.000, 1e-9));
     expect(applyCal(1.040, pts), closeTo(1.016, 1e-9));
   });
+
+  test('water shortcut maps current raw to 1.000', () {
+    final p = waterCal(currentRaw: 1.002);
+    expect(p.uncalSg, closeTo(1.002, 1e-9));
+    expect(p.actualSg, closeTo(1.000, 1e-9));
+  });
 }
