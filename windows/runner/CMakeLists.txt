@@ -38,3 +38,12 @@ target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
 
 # Run the Flutter tool portions of the build. This must not be removed.
 add_dependencies(${BINARY_NAME} flutter_assemble)
+
+# POST_BUILD must live with this target (CMake refuses parent-dir POST_BUILD).
+add_custom_command(
+  TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${TILT_LISTEN_SIDECAR}"
+    "$<TARGET_FILE_DIR:${BINARY_NAME}>/tilt_listen.exe"
+  COMMENT "Copy tilt_listen sidecar next to runner"
+)

@@ -2,11 +2,11 @@ import 'dart:async';
 
 import 'package:tiltawort/tilt/decode.dart';
 
-/// Default true so Roller can ship UI without the radio.
-/// Live Windows listen: `--dart-define=USE_FAKE_SCANNER=false`.
+/// Default false: the Windows window listens via the sidecar.
+/// Tests inject [FakeTiltScanner]. Force fake: `--dart-define=USE_FAKE_SCANNER=true`.
 const kUseFakeScanner = bool.fromEnvironment(
   'USE_FAKE_SCANNER',
-  defaultValue: true,
+  defaultValue: false,
 );
 
 enum RadioState { off, on }

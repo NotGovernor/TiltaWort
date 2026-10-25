@@ -177,7 +177,7 @@ void main() {
     expect(find.textContaining('Connected'), findsNothing);
   });
 
-  test('kUseFakeScanner stays true', () {
-    expect(kUseFakeScanner, isTrue);
+  test('kUseFakeScanner defaults false', () {
+    expect(kUseFakeScanner, isFalse);
   });
 }

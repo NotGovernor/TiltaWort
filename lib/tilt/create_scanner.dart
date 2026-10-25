@@ -5,7 +5,7 @@ import 'package:tiltawort/tilt/scanner.dart';
 import 'package:tiltawort/tilt/stub_scanner.dart';
 import 'package:tiltawort/tilt/windows_scanner.dart';
 
-/// Roller calls this. Default fake so UI ships without the radio.
+/// Live Windows → [WindowsBleScanner]. Tests inject [FakeTiltScanner].
 TiltScanner createScanner() {
   if (kUseFakeScanner) {
     return FakeTiltScanner(

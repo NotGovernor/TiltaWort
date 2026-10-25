@@ -46,7 +46,7 @@ void main() {
     expect(view.calSg, closeTo(1.0000, 1e-9));
   });
 
-  test('kUseFakeScanner defaults true for Roller', () {
-    expect(kUseFakeScanner, isTrue);
+  test('kUseFakeScanner defaults false (tests inject FakeTiltScanner)', () {
+    expect(kUseFakeScanner, isFalse);
   });
 }
