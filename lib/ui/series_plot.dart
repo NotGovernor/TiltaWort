@@ -281,6 +281,8 @@ class SeriesPainter extends CustomPainter {
 
     if (visible.isEmpty) return;
 
+    final ordered = [...visible]..sort((a, b) => a.at.compareTo(b.at));
+
     double xOf(SessionSample s) =>
         s.at.difference(start).inMilliseconds / spanX * size.width;
     double py(SessionSample s) =>
@@ -288,8 +290,8 @@ class SeriesPainter extends CustomPainter {
 
     final path = Path();
     Offset? last;
-    for (var i = 0; i < visible.length; i++) {
-      final s = visible[i];
+    for (var i = 0; i < ordered.length; i++) {
+      final s = ordered[i];
       final pt = Offset(xOf(s), py(s));
       if (i == 0) {
         path.moveTo(pt.dx, pt.dy);
@@ -306,7 +308,7 @@ class SeriesPainter extends CustomPainter {
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
-    if (visible.length == 1 && last != null) {
+    if (ordered.length == 1 && last != null) {
       canvas.drawCircle(last, 3, Paint()..color = line);
     } else {
       canvas.drawPath(path, paint);

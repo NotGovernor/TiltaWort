@@ -22,10 +22,22 @@ class SessionHistory {
 
   void add(String uuid, SessionSample sample) {
     final list = _byUuid.putIfAbsent(uuid, () => <SessionSample>[]);
-    if (list.isNotEmpty && list.last.at == sample.at) return;
-    list.add(sample);
+    for (final existing in list) {
+      if (existing.at == sample.at) return;
+    }
+    var i = list.length;
+    while (i > 0 && list[i - 1].at.isAfter(sample.at)) {
+      i--;
+    }
+    list.insert(i, sample);
     if (list.length > cap) {
       list.removeRange(0, list.length - cap);
+    }
+  }
+
+  void mergeAll(String uuid, Iterable<SessionSample> samples) {
+    for (final sample in samples) {
+      add(uuid, sample);
     }
   }
 }

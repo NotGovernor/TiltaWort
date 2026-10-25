@@ -111,9 +111,10 @@ class _DevicePageState extends State<DevicePage> {
     }
     final active = widget.logs.activeFor(_view.color);
     if (active != null && await active.exists()) {
-      for (final sample in samplesFromCsv(await active.readAsString())) {
-        widget.history.add(_view.uuid, sample);
-      }
+      widget.history.mergeAll(
+        _view.uuid,
+        samplesFromCsv(await active.readAsString()),
+      );
       if (mounted) setState(() {});
     }
   }
