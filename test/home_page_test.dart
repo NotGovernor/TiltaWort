@@ -1,10 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiltawort/app.dart';
+import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/decode.dart';
 import 'package:tiltawort/tilt/fake_scanner.dart';
 import 'package:tiltawort/tilt/models.dart';
+import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
+import 'package:tiltawort/ui/chamfer.dart';
 import 'package:tiltawort/ui/home_page.dart';
 import 'package:tiltawort/ui/theme.dart';
 
@@ -24,21 +29,43 @@ const _black = TiltAdvertisement(
   isPro: false,
 );
 
+/// In-memory store so widget tests do not wait on dart:io inside fake async.
+class _MemoryPrefs extends PrefsStore {
+  _MemoryPrefs() : super(File('memory-prefs.json'));
+
+  final _data = <String, TiltPrefs>{};
+
+  @override
+  Future<TiltPrefs> load(String uuid) async =>
+      _data[uuid] ?? TiltPrefs.defaults;
+
+  @override
+  Future<void> save(String uuid, TiltPrefs prefs) async {
+    _data[uuid] = prefs;
+  }
+}
+
 Future<void> _pumpHome(
   WidgetTester tester, {
   required TiltScanner scanner,
   List<TiltView> seed = const [],
   DateTime Function()? now,
   Map<String, String> names = const {},
+  PrefsStore? prefs,
+  ThemeData? theme,
+  ThemeMode themeMode = ThemeMode.dark,
 }) async {
   await tester.pumpWidget(
     MaterialApp(
-      theme: tiltDarkTheme(),
+      theme: theme ?? tiltDarkTheme(),
+      darkTheme: tiltDarkTheme(),
+      themeMode: themeMode,
       home: HomePage(
         scanner: scanner,
         seed: seed,
         now: now,
         names: names,
+        prefs: prefs,
       ),
     ),
   );
@@ -179,5 +206,65 @@ void main() {
 
   test('kUseFakeScanner defaults false', () {
     expect(kUseFakeScanner, isFalse);
+  });
+
+  testWidgets('prefs cal point changes Home SG; remembered name survives rescan',
+      (tester) async {
+    final t0 = DateTime.utc(2026, 10, 25, 0, 50);
+    final prefs = _MemoryPrefs();
+    await prefs.save(
+      FakeTiltScanner.pinkUuid,
+      const TiltPrefs(
+        name: 'House Pale',
+        cal: [CalPoint(uncalSg: 1.000, actualSg: 1.004)],
+      ),
+    );
+    final scanner = FakeTiltScanner(
+      script: [
+        TiltAdvertisementEvent(advertisement: _pink, receivedAt: t0),
+      ],
+    );
+    await _pumpHome(
+      tester,
+      scanner: scanner,
+      now: () => t0,
+      prefs: prefs,
+    );
+
+    expect(find.text('House Pale'), findsOneWidget);
+    expect(find.text('1.0040'), findsOneWidget);
+    expect(find.text('1.0000'), findsNothing);
+    expect(find.text('72.0 °F'), findsOneWidget);
+    expect(find.textContaining('Connected'), findsNothing);
+  });
+
+  testWidgets('Light uses light surface on a tile', (tester) async {
+    final t0 = DateTime.utc(2026, 10, 25, 0, 50);
+    final scanner = FakeTiltScanner(
+      script: [
+        TiltAdvertisementEvent(advertisement: _pink, receivedAt: t0),
+      ],
+    );
+    await _pumpHome(
+      tester,
+      scanner: scanner,
+      now: () => t0,
+      theme: tiltLightTheme(),
+      themeMode: ThemeMode.light,
+    );
+
+    expect(find.byType(TiltTile), findsOneWidget);
+    final plates = tester
+        .widgetList<ChamferPlate>(
+          find.descendant(
+            of: find.byType(TiltTile),
+            matching: find.byType(ChamferPlate),
+          ),
+        )
+        .toList();
+    expect(plates, isNotEmpty);
+    expect(plates.first.fill, TiltPalette.light.surface);
+    expect(plates.first.fill, isNot(TiltColors.surface));
+    expect(find.textContaining('Connected'), findsNothing);
   });
 }

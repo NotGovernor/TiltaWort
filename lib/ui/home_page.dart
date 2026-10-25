@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
 import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/models.dart';
@@ -46,6 +47,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final _tiles = <String, TiltView>{};
+  final _prefsCache = <String, TiltPrefs>{};
   RadioState _radio = RadioState.on;
   StreamSubscription<TiltAdvertisementEvent>? _ads;
   StreamSubscription<RadioState>? _radioSub;
@@ -54,12 +56,20 @@ class _HomePageState extends State<HomePage> {
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
+  String _nameFor(String uuid, TiltPrefs? prefs, String fallback) {
+    final injected = widget.names[uuid];
+    if (injected != null && injected.isNotEmpty) return injected;
+    if (prefs != null && prefs.name.isNotEmpty) return prefs.name;
+    return fallback;
+  }
+
   @override
   void initState() {
     super.initState();
     _history = widget.history ?? SessionHistory();
     for (final tile in widget.seed) {
       _tiles[tile.uuid] = tile;
+      unawaited(_hydrateUuid(tile.uuid));
     }
     _ads = widget.scanner.advertisements.listen(_onAd);
     _radioSub = widget.scanner.radio.listen((state) {
@@ -72,9 +82,23 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onAd(TiltAdvertisementEvent event) {
+    unawaited(_onAdAsync(event));
+  }
+
+  Future<void> _onAdAsync(TiltAdvertisementEvent event) async {
     final uuid = event.advertisement.uuid;
-    final name = widget.names[uuid] ?? _tiles[uuid]?.name ?? '';
-    final view = TiltView.fromEvent(event, name: name);
+    var prefs = _prefsCache[uuid];
+    if (prefs == null && widget.prefs != null) {
+      prefs = await widget.prefs!.load(uuid);
+      if (!mounted) return;
+      _prefsCache[uuid] = prefs;
+    }
+    final name = _nameFor(uuid, prefs, _tiles[uuid]?.name ?? '');
+    final view = TiltView.fromEvent(
+      event,
+      name: name,
+      cal: prefs?.cal ?? const [],
+    );
     _history.add(
       uuid,
       SessionSample(at: view.lastPacket, sg: view.calSg, tempF: view.calTempF),
@@ -83,12 +107,27 @@ class _HomePageState extends State<HomePage> {
     setState(() => _tiles[uuid] = view);
   }
 
-  void _openDevice(TiltView tile) {
+  Future<void> _hydrateUuid(String uuid) async {
+    if (widget.prefs == null) return;
+    final loaded = await widget.prefs!.load(uuid);
+    if (!mounted) return;
+    _prefsCache[uuid] = loaded;
+    final tile = _tiles[uuid];
+    if (tile == null) return;
+    final name = _nameFor(uuid, loaded, tile.name);
+    final calSg = applyCal(tile.rawSg, loaded.cal);
+    if (tile.name == name && tile.calSg == calSg) return;
+    setState(() {
+      _tiles[uuid] = tile.copyWith(name: name, calSg: calSg);
+    });
+  }
+
+  Future<void> _openDevice(TiltView tile) async {
     final prefs = widget.prefs ??
         PrefsStore(File('${Directory.systemTemp.path}/tiltawort-prefs.json'));
     final logs = widget.logs ??
         CsvLogStore(Directory('${Directory.systemTemp.path}/tiltawort-logs'));
-    Navigator.of(context).push(
+    await Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => DevicePage(
           scanner: widget.scanner,
@@ -100,6 +139,8 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+    _prefsCache.remove(tile.uuid);
+    await _hydrateUuid(tile.uuid);
   }
 
   @override
@@ -215,13 +256,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = TiltPalette.of(context);
     return Row(
       children: [
         const Expanded(child: Text('Tilt-a-Wort', style: soraTitle)),
         IconButton(
           tooltip: 'App settings',
           onPressed: onGear,
-          icon: const Icon(Icons.settings, color: TiltColors.secondary),
+          icon: Icon(Icons.settings, color: palette.secondary),
         ),
       ],
     );
@@ -235,30 +277,31 @@ class _RadioOffBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = TiltPalette.of(context);
     return ChamferPlate(
       chamfer: 8,
-      fill: TiltColors.tertiary,
-      edge: TiltColors.tertiary,
+      fill: palette.tertiary,
+      edge: palette.tertiary,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             copy,
-            style: soraBody.copyWith(color: TiltColors.onTertiary),
+            style: soraBody.copyWith(color: palette.onTertiary),
           ),
           const SizedBox(height: 12),
           ChamferPlate(
             chamfer: 8,
-            fill: TiltColors.primary,
-            edge: TiltColors.primary,
+            fill: palette.primary,
+            edge: palette.primary,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            child: const Text(
+            child: Text(
               'Open Bluetooth settings',
               style: TextStyle(
                 fontFamily: 'Sora',
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
-                color: TiltColors.onPrimary,
+                color: palette.onPrimary,
               ),
             ),
           ),
@@ -298,8 +341,8 @@ class TiltTile extends StatelessWidget {
       constraints: const BoxConstraints(minHeight: 88),
       child: ChamferPlate(
         chamfer: 12,
-        fill: TiltColors.surface,
-        edge: live ? TiltColors.primary : TiltColors.secondary,
+        fill: palette.surface,
+        edge: live ? palette.primary : palette.secondary,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -311,7 +354,7 @@ class TiltTile extends StatelessWidget {
                   child: ChamferPlate(
                     chamfer: 4,
                     fill: factorySwatch(view.color),
-                    edge: TiltColors.secondary,
+                    edge: palette.secondary,
                     padding: EdgeInsets.zero,
                     child: const SizedBox.expand(),
                   ),
@@ -364,10 +407,11 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final palette = TiltPalette.of(context);
     return ChamferPlate(
       chamfer: 8,
-      fill: live ? TiltColors.primary : TiltColors.surface,
-      edge: live ? TiltColors.primary : TiltColors.secondary,
+      fill: live ? palette.primary : palette.surface,
+      edge: live ? palette.primary : palette.secondary,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Text(
         live ? 'Live' : 'Stale',
@@ -375,7 +419,7 @@ class _StatusChip extends StatelessWidget {
           fontFamily: 'Sora',
           fontSize: 12,
           fontWeight: FontWeight.w600,
-          color: live ? TiltColors.onPrimary : TiltColors.secondary,
+          color: live ? palette.onPrimary : palette.secondary,
         ),
       ),
     );
