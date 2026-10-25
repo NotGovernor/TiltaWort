@@ -1,5 +1,9 @@
 import 'dart:io';
 
+/// Recording UI is the open file, not the leftover prefs.logging flag.
+bool recordingUi({required bool prefsLogging, required bool fileOpen}) =>
+    fileOpen;
+
 class CsvLogStore {
   CsvLogStore(this.directory, {this.reveal});
 

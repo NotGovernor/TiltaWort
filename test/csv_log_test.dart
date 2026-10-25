@@ -60,4 +60,18 @@ void main() {
     expect(pink, hasLength(1));
     expect(pink.first.path, contains('Pink'));
   });
+
+  test('deleteFile of active log ends recording', () async {
+    final store = CsvLogStore(dir);
+    final f = await store.startLog(color: 'Pink', beer: 'Pale');
+    expect(store.isOpen, isTrue);
+    await store.deleteFile(f);
+    expect(store.isOpen, isFalse);
+  });
+
+  test('recordingUi is fileOpen only', () {
+    expect(recordingUi(prefsLogging: true, fileOpen: false), isFalse);
+    expect(recordingUi(prefsLogging: false, fileOpen: true), isTrue);
+    expect(recordingUi(prefsLogging: true, fileOpen: true), isTrue);
+  });
 }
