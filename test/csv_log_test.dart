@@ -74,4 +74,62 @@ void main() {
     expect(recordingUi(prefsLogging: false, fileOpen: true), isTrue);
     expect(recordingUi(prefsLogging: true, fileOpen: true), isTrue);
   });
+
+  test('interval 900s skips a second append 1s later unless force', () async {
+    final store = CsvLogStore(dir);
+    final start = DateTime.utc(2026, 10, 25, 13, 0);
+    final file = await store.startLog(color: 'Pink', beer: 'Pale', at: start);
+    await store.append(
+      timestamp: start,
+      sg: 1.010,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+      intervalSeconds: 900,
+    );
+    await store.append(
+      timestamp: start.add(const Duration(seconds: 1)),
+      sg: 1.011,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+      intervalSeconds: 900,
+    );
+    var lines = (await file.readAsString()).trim().split(RegExp(r'\r?\n'));
+    expect(lines, hasLength(2));
+    await store.append(
+      timestamp: start.add(const Duration(seconds: 2)),
+      sg: 1.012,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+      intervalSeconds: 900,
+      force: true,
+    );
+    lines = (await file.readAsString()).trim().split(RegExp(r'\r?\n'));
+    expect(lines, hasLength(3));
+    expect(lines[2], contains('1.012'));
+  });
+
+  test('shouldWrite is true when closed is false, interval 0 always, first write, then elapsed', () async {
+    final store = CsvLogStore(dir);
+    final t0 = DateTime.utc(2026, 10, 25, 13, 0);
+    expect(store.shouldWrite(t0, 900), isFalse);
+    await store.startLog(color: 'Pink', beer: 'Pale', at: t0);
+    expect(store.shouldWrite(t0, 0), isTrue);
+    expect(store.shouldWrite(t0, 900), isTrue);
+    await store.append(
+      timestamp: t0,
+      sg: 1.000,
+      temp: 70,
+      color: 'Pink',
+      beer: 'Pale',
+      intervalSeconds: 900,
+    );
+    expect(store.shouldWrite(t0.add(const Duration(seconds: 1)), 900), isFalse);
+    expect(store.shouldWrite(t0.add(const Duration(seconds: 900)), 900), isTrue);
+    await store.endLog();
+    expect(store.lastWrite, isNull);
+    expect(store.shouldWrite(t0.add(const Duration(hours: 1)), 900), isFalse);
+  });
 }

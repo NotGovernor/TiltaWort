@@ -14,9 +14,17 @@ class CsvLogStore {
 
   File? active;
   DateTime? logStart;
+  DateTime? lastWrite;
   String? activeColor;
 
   bool get isOpen => active != null;
+
+  bool shouldWrite(DateTime now, int intervalSeconds) {
+    if (active == null) return false;
+    if (intervalSeconds <= 0) return true;
+    if (lastWrite == null) return true;
+    return now.difference(lastWrite!) >= Duration(seconds: intervalSeconds);
+  }
 
   Future<File> startLog({
     required String color,
@@ -26,6 +34,7 @@ class CsvLogStore {
     await directory.create(recursive: true);
     final when = at ?? DateTime.now();
     logStart = when;
+    lastWrite = null;
     activeColor = color;
     final stamp = _stamp(when);
     final safe = _safe(beer.trim().isEmpty ? 'Untitled' : beer);
@@ -38,6 +47,7 @@ class CsvLogStore {
   Future<void> endLog() async {
     active = null;
     logStart = null;
+    lastWrite = null;
     activeColor = null;
   }
 
@@ -48,8 +58,11 @@ class CsvLogStore {
     required String color,
     required String beer,
     String comment = '',
+    bool force = false,
+    int intervalSeconds = 0,
   }) async {
     if (active == null || logStart == null) return;
+    if (!force && !shouldWrite(timestamp, intervalSeconds)) return;
     final timepoint =
         timestamp.difference(logStart!).inMicroseconds / Duration.microsecondsPerDay;
     final row = [
@@ -62,6 +75,7 @@ class CsvLogStore {
       _csv(comment),
     ].join(',');
     await active!.writeAsString('$row\n', mode: FileMode.append);
+    lastWrite = timestamp;
   }
 
   Future<List<File>> listForColor(String color) async {

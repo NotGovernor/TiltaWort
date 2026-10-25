@@ -47,5 +47,14 @@ void main() {
     expect(loaded.gravityUnit, 'SG');
     expect(loaded.cal, isEmpty);
     expect(loaded.logging, isFalse);
+    expect(loaded.logIntervalSeconds, 0);
+  });
+
+  test('logIntervalSeconds round-trips and defaults to 0', () async {
+    const uuid = 'A495BB80-C5B1-4B44-B512-1370F02D74DE';
+    final store = PrefsStore(file);
+    await store.save(uuid, const TiltPrefs(logIntervalSeconds: 900));
+    final loaded = await PrefsStore(file).load(uuid);
+    expect(loaded.logIntervalSeconds, 900);
   });
 }

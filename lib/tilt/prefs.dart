@@ -10,6 +10,7 @@ class TiltPrefs {
     this.gravityUnit = 'SG',
     this.cal = const [],
     this.logging = false,
+    this.logIntervalSeconds = 0,
   });
 
   final String name;
@@ -17,6 +18,7 @@ class TiltPrefs {
   final String gravityUnit;
   final List<CalPoint> cal;
   final bool logging;
+  final int logIntervalSeconds;
 
   static const defaults = TiltPrefs();
 
@@ -26,6 +28,7 @@ class TiltPrefs {
     String? gravityUnit,
     List<CalPoint>? cal,
     bool? logging,
+    int? logIntervalSeconds,
   }) {
     return TiltPrefs(
       name: name ?? this.name,
@@ -33,6 +36,7 @@ class TiltPrefs {
       gravityUnit: gravityUnit ?? this.gravityUnit,
       cal: cal ?? this.cal,
       logging: logging ?? this.logging,
+      logIntervalSeconds: logIntervalSeconds ?? this.logIntervalSeconds,
     );
   }
 
@@ -44,6 +48,7 @@ class TiltPrefs {
           for (final p in cal) {'uncalSg': p.uncalSg, 'actualSg': p.actualSg},
         ],
         'logging': logging,
+        'logIntervalSeconds': logIntervalSeconds,
       };
 
   factory TiltPrefs.fromJson(Map<String, dynamic>? json) {
@@ -67,6 +72,9 @@ class TiltPrefs {
       gravityUnit: json['gravityUnit'] as String? ?? 'SG',
       cal: cal,
       logging: json['logging'] as bool? ?? false,
+      logIntervalSeconds: json['logIntervalSeconds'] is num
+          ? (json['logIntervalSeconds'] as num).toInt()
+          : 0,
     );
   }
 }
