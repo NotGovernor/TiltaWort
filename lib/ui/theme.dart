@@ -24,6 +24,17 @@ class TiltPalette {
     required this.surface,
     required this.ink,
     required this.muted,
+    required this.livePlate,
+    required this.stalePlate,
+    required this.liveInk,
+    required this.staleInk,
+    required this.mesh,
+    required this.stalePill,
+    required this.liveGold,
+    required this.tempOnLive,
+    required this.tempOnStale,
+    required this.aluminum,
+    required this.stampInk,
   });
 
   final Color primary;
@@ -35,6 +46,17 @@ class TiltPalette {
   final Color surface;
   final Color ink;
   final Color muted;
+  final Color livePlate;
+  final Color stalePlate;
+  final Color liveInk;
+  final Color staleInk;
+  final Color mesh;
+  final Color stalePill;
+  final Color liveGold;
+  final Color tempOnLive;
+  final Color tempOnStale;
+  final Color aluminum;
+  final Color stampInk;
 
   static const dark = TiltPalette(
     primary: TiltColors.primary,
@@ -46,6 +68,17 @@ class TiltPalette {
     surface: TiltColors.surface,
     ink: TiltColors.ink,
     muted: TiltColors.muted,
+    livePlate: Color(0xFFD2D5D8),
+    stalePlate: Color(0xFF1A1D21),
+    liveInk: Color(0xFF141612),
+    staleInk: TiltColors.ink,
+    mesh: Color(0x663A6A8A),
+    stalePill: Color(0xFF4A6278),
+    liveGold: Color(0xFF8A6418),
+    tempOnLive: Color(0xFF2A3038),
+    tempOnStale: Color(0xFFC4C8C2),
+    aluminum: Color(0xFFD0D4D8),
+    stampInk: Color(0xFF141612),
   );
 
   /// Sun on a greenhouse wall — not an invert of dark.
@@ -59,6 +92,17 @@ class TiltPalette {
     surface: Color(0xFFE8E2D4),
     ink: Color(0xFF121510),
     muted: Color(0xFF5A5E58),
+    livePlate: Color(0xFFF6F1E4),
+    stalePlate: Color(0xFFD4CDBE),
+    liveInk: Color(0xFF121510),
+    staleInk: Color(0xFF121510),
+    mesh: Color(0x336B5010),
+    stalePill: Color(0xFF8A8478),
+    liveGold: Color(0xFF6B5010),
+    tempOnLive: Color(0xFF1A1C18),
+    tempOnStale: Color(0xFF1A1C18),
+    aluminum: Color(0xFFE4DFD2),
+    stampInk: Color(0xFF121510),
   );
 
   static TiltPalette of(BuildContext context) {
@@ -142,17 +186,25 @@ ThemeData tiltLightTheme() {
 
 const oxaniumReadout = TextStyle(
   fontFamily: 'Oxanium',
-  fontSize: 28,
+  fontSize: 40,
   fontWeight: FontWeight.w700,
-  height: 1.1,
+  height: 1.05,
+  fontFeatures: [FontFeature.tabularFigures()],
+);
+
+const oxaniumHero = TextStyle(
+  fontFamily: 'Oxanium',
+  fontSize: 52,
+  fontWeight: FontWeight.w700,
+  height: 1.0,
   fontFeatures: [FontFeature.tabularFigures()],
 );
 
 const soraTitle = TextStyle(
   fontFamily: 'Sora',
-  fontSize: 20,
+  fontSize: 28,
   fontWeight: FontWeight.w600,
-  height: 1.2,
+  height: 1.15,
   color: TiltColors.primary,
 );
 
