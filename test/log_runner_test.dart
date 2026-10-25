@@ -122,6 +122,31 @@ void main() {
     expect((await prefs.load(pink)).logging, isFalse);
   });
 
+  test('snapshot while idle writes Snapshot file and does not start recording',
+      () async {
+    final t0 = DateTime.utc(2026, 10, 25, 17);
+    await runner.snapshot(
+      uuid: pink,
+      color: 'Pink',
+      beer: 'Pale',
+      sg: 1.042,
+      tempF: 68,
+      at: t0,
+      comment: 'spot',
+    );
+    expect(logs.isOpenFor('Pink'), isFalse);
+    expect((await prefs.load(pink)).logging, isFalse);
+    final files = await logs.listForColor('Pink');
+    expect(files, hasLength(1));
+    expect(files.first.uri.pathSegments.last, startsWith('Snapshot (Pink TILT)'));
+    final lines =
+        (await files.first.readAsString()).trim().split(RegExp(r'\r?\n'));
+    expect(lines, hasLength(2));
+    expect(lines.first, CsvLogStore.header);
+    expect(lines.last, contains('1.042'));
+    expect(lines.last, contains('spot'));
+  });
+
   test('snapshot force-writes even inside the interval', () async {
     final t0 = DateTime.utc(2026, 10, 25, 17);
     await prefs.save(pink, const TiltPrefs(logging: false, logIntervalSeconds: 900));

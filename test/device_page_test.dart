@@ -192,6 +192,8 @@ void main() {
     expect(find.text('°C'), findsOneWidget);
     expect(find.text('SG'), findsWidgets);
     expect(find.text('°P'), findsOneWidget);
+    expect(find.text('Gravity Reading Type'), findsOneWidget);
+    expect(find.text('Temperature scale'), findsOneWidget);
     expect(find.text('ABV'), findsNothing);
     expect(find.text('Brix'), findsNothing);
     expect(find.text('proof'), findsNothing);
@@ -210,7 +212,7 @@ void main() {
       now: () => t0,
     );
     expect(find.text('Start recording'), findsOneWidget);
-    expect(find.text('Stop recording'), findsOneWidget);
+    expect(find.text('Stop recording'), findsNothing);
     expect(find.text('Snapshot'), findsOneWidget);
     expect(find.text('Forget this Tilt'), findsOneWidget);
     expect(find.text('Not recording'), findsOneWidget);
@@ -240,6 +242,9 @@ void main() {
 
     expect(find.textContaining('Recording ·'), findsOneWidget);
     expect(find.text('Not recording'), findsNothing);
+    expect(find.text('Stop recording'), findsOneWidget);
+    expect(find.text('Start recording'), findsNothing);
+    expect(find.text('Snapshot'), findsOneWidget);
 
     await tester.runAsync(() async {
       await logs.deleteFile(logs.active!);
@@ -249,27 +254,8 @@ void main() {
     expect(logs.isOpen, isFalse);
     expect(find.text('Not recording'), findsOneWidget);
     expect(find.textContaining('Recording ·'), findsNothing);
-  });
-
-  testWidgets('gravity help shows Plato formula', (tester) async {
-    tester.view.physicalSize = const Size(800, 4000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-
-    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
-    await _pumpDevice(
-      tester,
-      scanner: FakeTiltScanner(script: const []),
-      view: pinkView(t0),
-      prefs: prefs,
-      history: SessionHistory(),
-      logs: logs,
-      now: () => t0,
-    );
-    await tester.tap(find.text('?'));
-    await tester.pump();
-    expect(find.textContaining('259 − (259 / SG)'), findsOneWidget);
+    expect(find.text('Start recording'), findsOneWidget);
+    expect(find.text('Stop recording'), findsNothing);
   });
 
   testWidgets('empty name unfocus becomes Untitled', (tester) async {

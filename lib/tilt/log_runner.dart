@@ -103,19 +103,30 @@ class LogRunner {
     String comment = '',
     String tempUnit = 'F',
   }) async {
-    if (!logs.isOpenFor(color)) {
-      await startRecording(uuid: uuid, color: color, beer: beer, at: at);
-    }
     final p = await prefsFor(uuid);
-    await logs.append(
-      timestamp: at ?? DateTime.now(),
+    final unit = tempUnit.isEmpty ? p.tempUnit : tempUnit;
+    final when = at ?? DateTime.now();
+    if (logs.isOpenFor(color)) {
+      await logs.append(
+        timestamp: when,
+        sg: sg,
+        temp: tempF,
+        color: color,
+        beer: beer,
+        comment: comment,
+        force: true,
+        tempUnit: unit,
+      );
+      return;
+    }
+    await logs.writeSnapshot(
+      timestamp: when,
       sg: sg,
       temp: tempF,
       color: color,
       beer: beer,
       comment: comment,
-      force: true,
-      tempUnit: tempUnit.isEmpty ? p.tempUnit : tempUnit,
+      tempUnit: unit,
     );
   }
 

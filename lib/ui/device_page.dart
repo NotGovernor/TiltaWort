@@ -170,6 +170,10 @@ class _DevicePageState extends State<DevicePage> {
     final now = _now();
     final live = !_view.neverHeard && _view.isLiveAt(now);
     final beer = _prefs.name.trim().isEmpty ? 'Untitled' : _prefs.name.trim();
+    final recording = recordingUi(
+      prefsLogging: _prefs.logging,
+      fileOpen: widget.logs.isOpenFor(_view.color),
+    );
     final samples = widget.history.of(_view.uuid);
     final gUnit = _prefs.gravityUnit == 'P' ? '°P' : 'SG';
     final tUnit = _prefs.tempUnit == 'C' ? '°C' : '°F';
@@ -401,10 +405,7 @@ class _DevicePageState extends State<DevicePage> {
                       children: [
                         Text(
                           recordingStatusLine(
-                            isOpen: recordingUi(
-                              prefsLogging: _prefs.logging,
-                              fileOpen: widget.logs.isOpenFor(_view.color),
-                            ),
+                            isOpen: recording,
                             fileName: widget.logs
                                 .activeFor(_view.color)
                                 ?.uri
@@ -438,8 +439,10 @@ class _DevicePageState extends State<DevicePage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _btn(p, 'Start recording', _startLog, kind: MetalButtonKind.gold),
-                            _btn(p, 'Stop recording', _endLog, kind: MetalButtonKind.steel),
+                            if (recording)
+                              _btn(p, 'Stop recording', _endLog, kind: MetalButtonKind.steel)
+                            else
+                              _btn(p, 'Start recording', _startLog, kind: MetalButtonKind.gold),
                             _btn(p, 'Snapshot', _logOnce, kind: MetalButtonKind.blue),
                           ],
                         ),
@@ -543,7 +546,7 @@ class _DevicePageState extends State<DevicePage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text('Temp', style: soraLabel.copyWith(color: p.secondary)),
+                        Text('Temperature scale', style: soraLabel.copyWith(color: p.secondary)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -557,7 +560,7 @@ class _DevicePageState extends State<DevicePage> {
                           ],
                         ),
                         const SizedBox(height: 12),
-                        Text('Gravity', style: soraLabel.copyWith(color: p.secondary)),
+                        Text('Gravity Reading Type', style: soraLabel.copyWith(color: p.secondary)),
                         const SizedBox(height: 8),
                         Row(
                           children: [
@@ -568,22 +571,6 @@ class _DevicePageState extends State<DevicePage> {
                             _choice(p, '°P', _prefs.gravityUnit == 'P', () {
                               _setPrefs(_prefs.copyWith(gravityUnit: 'P'));
                             }),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _gravityHelp,
-                              child: ChamferPlate(
-                                chamfer: 8,
-                                bevel: 4,
-                                fill: p.aluminum,
-                                edge: p.secondary,
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                shadow: true,
-                                child: Text(
-                                  '?',
-                                  style: soraLabel.copyWith(color: p.stampInk),
-                                ),
-                              ),
-                            ),
                           ],
                         ),
                       ],
@@ -814,47 +801,6 @@ class _DevicePageState extends State<DevicePage> {
     if (_prefs.name != next) _setPrefs(_prefs.copyWith(name: next));
   }
 
-  Future<void> _gravityHelp() async {
-    final p = TiltPalette.of(context);
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: ChamferPlate(
-            fill: p.surface,
-            edge: p.primary,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Plato', style: soraTitle.copyWith(color: p.primary)),
-                const SizedBox(height: 8),
-                Text(
-                  '°P = 259 − (259 / SG)',
-                  style: soraBody.copyWith(color: p.ink),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Same formula as Tilt. Live °P is on the hero when you pick °P.',
-                  style: soraMuted.copyWith(color: p.muted),
-                ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text('Close', style: soraBody.copyWith(color: p.primary)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _startLog() async {
     if (_prefs.name.trim().isEmpty) {
       await _promptName();
@@ -876,10 +822,6 @@ class _DevicePageState extends State<DevicePage> {
   }
 
   Future<void> _logOnce() async {
-    if (!widget.logs.isOpenFor(_view.color)) {
-      await _startLog();
-      if (!widget.logs.isOpenFor(_view.color)) return;
-    }
     final temp = _prefs.tempUnit == 'C' ? fToC(_view.calTempF) : _view.calTempF;
     await _runner.snapshot(
       uuid: _view.uuid,

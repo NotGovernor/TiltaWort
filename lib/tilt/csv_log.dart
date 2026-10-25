@@ -120,6 +120,35 @@ class CsvLogStore {
     }
   }
 
+  /// One-row CSV. Does not open an active log.
+  Future<File> writeSnapshot({
+    required DateTime timestamp,
+    required double sg,
+    required double temp,
+    required String color,
+    required String beer,
+    String comment = '',
+    String tempUnit = 'F',
+  }) async {
+    await directory.create(recursive: true);
+    final stamp = _stamp(timestamp);
+    final name = 'Snapshot ($color TILT) $stamp.csv';
+    final file = File('${directory.path}${Platform.pathSeparator}$name');
+    final row = [
+      timestamp.toIso8601String(),
+      '0.000000',
+      sg.toString(),
+      sgToPlato(sg).toStringAsFixed(2),
+      temp.toString(),
+      _csv(tempUnit),
+      _csv(color),
+      _csv(beer),
+      _csv(comment),
+    ].join(',');
+    await file.writeAsString('$header\n$row\n');
+    return file;
+  }
+
   Future<void> append({
     required DateTime timestamp,
     required double sg,
