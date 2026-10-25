@@ -40,6 +40,14 @@ String recordingStatusLine({
   return 'Recording · $name · ${intervalStatus(intervalSeconds)}';
 }
 
+class _ActiveLog {
+  _ActiveLog({required this.file, required this.logStart, this.lastWrite});
+
+  File file;
+  DateTime logStart;
+  DateTime? lastWrite;
+}
+
 class CsvLogStore {
   CsvLogStore(this.directory, {this.reveal});
 
@@ -47,19 +55,27 @@ class CsvLogStore {
 
   final Directory directory;
   final Future<void> Function(String path)? reveal;
+  final _active = <String, _ActiveLog>{};
 
-  File? active;
-  DateTime? logStart;
-  DateTime? lastWrite;
-  String? activeColor;
+  bool isOpenFor(String color) => _active.containsKey(color);
 
-  bool get isOpen => active != null;
+  File? activeFor(String color) => _active[color]?.file;
 
-  bool shouldWrite(DateTime now, int intervalSeconds) {
-    if (active == null) return false;
+  DateTime? lastWriteFor(String color) => _active[color]?.lastWrite;
+
+  bool get isOpen => _active.isNotEmpty;
+
+  File? get active => _active.length == 1 ? _active.values.first.file : null;
+
+  DateTime? get lastWrite =>
+      _active.length == 1 ? _active.values.first.lastWrite : null;
+
+  bool shouldWrite(String color, DateTime now, int intervalSeconds) {
+    final log = _active[color];
+    if (log == null) return false;
     if (intervalSeconds <= 0) return true;
-    if (lastWrite == null) return true;
-    return now.difference(lastWrite!) >= Duration(seconds: intervalSeconds);
+    if (log.lastWrite == null) return true;
+    return now.difference(log.lastWrite!) >= Duration(seconds: intervalSeconds);
   }
 
   Future<File> startLog({
@@ -69,22 +85,21 @@ class CsvLogStore {
   }) async {
     await directory.create(recursive: true);
     final when = at ?? DateTime.now();
-    logStart = when;
-    lastWrite = null;
-    activeColor = color;
     final stamp = _stamp(when);
     final safe = _safe(beer.trim().isEmpty ? 'Untitled' : beer);
     final name = '$safe ($color TILT) $stamp.csv';
-    active = File('${directory.path}${Platform.pathSeparator}$name');
-    await active!.writeAsString('$header\n');
-    return active!;
+    final file = File('${directory.path}${Platform.pathSeparator}$name');
+    await file.writeAsString('$header\n');
+    _active[color] = _ActiveLog(file: file, logStart: when);
+    return file;
   }
 
-  Future<void> endLog() async {
-    active = null;
-    logStart = null;
-    lastWrite = null;
-    activeColor = null;
+  Future<void> endLog([String? color]) async {
+    if (color == null) {
+      _active.clear();
+    } else {
+      _active.remove(color);
+    }
   }
 
   Future<void> append({
@@ -98,10 +113,11 @@ class CsvLogStore {
     int intervalSeconds = 0,
     String tempUnit = 'F',
   }) async {
-    if (active == null || logStart == null) return;
-    if (!force && !shouldWrite(timestamp, intervalSeconds)) return;
+    final log = _active[color];
+    if (log == null) return;
+    if (!force && !shouldWrite(color, timestamp, intervalSeconds)) return;
     final timepoint =
-        timestamp.difference(logStart!).inMicroseconds / Duration.microsecondsPerDay;
+        timestamp.difference(log.logStart).inMicroseconds / Duration.microsecondsPerDay;
     final row = [
       timestamp.toIso8601String(),
       timepoint.toStringAsFixed(6),
@@ -113,8 +129,8 @@ class CsvLogStore {
       _csv(beer),
       _csv(comment),
     ].join(',');
-    await active!.writeAsString('$row\n', mode: FileMode.append);
-    lastWrite = timestamp;
+    await log.file.writeAsString('$row\n', mode: FileMode.append);
+    log.lastWrite = timestamp;
   }
 
   Future<List<File>> listForColor(String color) async {
@@ -130,8 +146,12 @@ class CsvLogStore {
   }
 
   Future<void> deleteFile(File file) async {
-    if (active != null && _same(active!, file)) {
-      await endLog();
+    final colors = _active.entries
+        .where((e) => _same(e.value.file, file))
+        .map((e) => e.key)
+        .toList();
+    for (final color in colors) {
+      await endLog(color);
     }
     if (await file.exists()) await file.delete();
   }

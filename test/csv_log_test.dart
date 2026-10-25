@@ -51,6 +51,36 @@ void main() {
     expect(lines[2], contains('1.0002'));
   });
 
+  test('two colors can record at once', () async {
+    final store = CsvLogStore(dir);
+    final t0 = DateTime.utc(2026, 10, 25, 17, 0);
+    final pink = await store.startLog(color: 'Pink', beer: 'Pale', at: t0);
+    final black = await store.startLog(color: 'Black', beer: 'Stout', at: t0);
+    expect(store.isOpenFor('Pink'), isTrue);
+    expect(store.isOpenFor('Black'), isTrue);
+    expect(pink.path, isNot(black.path));
+    await store.append(
+      timestamp: t0,
+      sg: 1.010,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+    );
+    await store.append(
+      timestamp: t0,
+      sg: 1.080,
+      temp: 64,
+      color: 'Black',
+      beer: 'Stout',
+    );
+    expect(await pink.readAsString(), contains('1.01'));
+    expect(await pink.readAsString(), isNot(contains('1.08')));
+    expect(await black.readAsString(), contains('1.08'));
+    await store.endLog('Pink');
+    expect(store.isOpenFor('Pink'), isFalse);
+    expect(store.isOpenFor('Black'), isTrue);
+  });
+
   test('listForColor only returns that color', () async {
     final store = CsvLogStore(dir);
     await store.startLog(color: 'Pink', beer: 'Pale', at: DateTime.utc(2026, 10, 24));
@@ -115,10 +145,10 @@ void main() {
   test('shouldWrite is true when closed is false, interval 0 always, first write, then elapsed', () async {
     final store = CsvLogStore(dir);
     final t0 = DateTime.utc(2026, 10, 25, 13, 0);
-    expect(store.shouldWrite(t0, 900), isFalse);
+    expect(store.shouldWrite('Pink', t0, 900), isFalse);
     await store.startLog(color: 'Pink', beer: 'Pale', at: t0);
-    expect(store.shouldWrite(t0, 0), isTrue);
-    expect(store.shouldWrite(t0, 900), isTrue);
+    expect(store.shouldWrite('Pink', t0, 0), isTrue);
+    expect(store.shouldWrite('Pink', t0, 900), isTrue);
     await store.append(
       timestamp: t0,
       sg: 1.000,
@@ -127,11 +157,11 @@ void main() {
       beer: 'Pale',
       intervalSeconds: 900,
     );
-    expect(store.shouldWrite(t0.add(const Duration(seconds: 1)), 900), isFalse);
-    expect(store.shouldWrite(t0.add(const Duration(seconds: 900)), 900), isTrue);
-    await store.endLog();
-    expect(store.lastWrite, isNull);
-    expect(store.shouldWrite(t0.add(const Duration(hours: 1)), 900), isFalse);
+    expect(store.shouldWrite('Pink', t0.add(const Duration(seconds: 1)), 900), isFalse);
+    expect(store.shouldWrite('Pink', t0.add(const Duration(seconds: 900)), 900), isTrue);
+    await store.endLog('Pink');
+    expect(store.lastWriteFor('Pink'), isNull);
+    expect(store.shouldWrite('Pink', t0.add(const Duration(hours: 1)), 900), isFalse);
   });
 
   test('row writes Plato from SG and TempUnit', () async {
