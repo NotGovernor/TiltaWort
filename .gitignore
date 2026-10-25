@@ -49,3 +49,6 @@ app.*.map.json
 
 # leftover Baron Brew signing artifact — never commit
 planning/vendor/
+
+# btleplug listen sidecar
+native/tilt_listen/target/

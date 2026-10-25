@@ -1,0 +1,12 @@
+[package]
+name = "tilt_listen"
+version = "0.1.0"
+edition = "2021"
+description = "Listen-only BLE sidecar for Tilt-a-Wort. No GATT. No connect."
+publish = false
+
+[dependencies]
+btleplug = "=0.13.5"
+futures = "0.3"
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "signal"] }
