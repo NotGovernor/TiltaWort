@@ -29,6 +29,7 @@ class TiltPalette {
     required this.liveInk,
     required this.staleInk,
     required this.mesh,
+    required this.meshLine,
     required this.stalePill,
     required this.liveGold,
     required this.tempOnLive,
@@ -51,6 +52,7 @@ class TiltPalette {
   final Color liveInk;
   final Color staleInk;
   final Color mesh;
+  final Color meshLine;
   final Color stalePill;
   final Color liveGold;
   final Color tempOnLive;
@@ -72,7 +74,8 @@ class TiltPalette {
     stalePlate: Color(0xFF1A1D21),
     liveInk: Color(0xFF141612),
     staleInk: TiltColors.ink,
-    mesh: Color(0x663A6A8A),
+    mesh: Color(0xFF0B1A2E),
+    meshLine: Color(0x663A6A8A),
     stalePill: Color(0xFF4A6278),
     liveGold: Color(0xFF8A6418),
     tempOnLive: Color(0xFF2A3038),
@@ -96,7 +99,8 @@ class TiltPalette {
     stalePlate: Color(0xFFD4CDBE),
     liveInk: Color(0xFF121510),
     staleInk: Color(0xFF121510),
-    mesh: Color(0x336B5010),
+    mesh: Color(0xFFF3EFE4),
+    meshLine: Color(0x336B5010),
     stalePill: Color(0xFF8A8478),
     liveGold: Color(0xFF6B5010),
     tempOnLive: Color(0xFF1A1C18),
@@ -137,8 +141,8 @@ ThemeData tiltDarkTheme() {
   return ThemeData(
     brightness: Brightness.dark,
     useMaterial3: true,
-    scaffoldBackgroundColor: TiltColors.neutral,
-    canvasColor: TiltColors.neutral,
+    scaffoldBackgroundColor: TiltPalette.dark.mesh,
+    canvasColor: TiltPalette.dark.mesh,
     fontFamily: 'Sora',
     colorScheme: const ColorScheme.dark(
       primary: TiltColors.primary,
@@ -149,8 +153,8 @@ ThemeData tiltDarkTheme() {
       surface: TiltColors.surface,
       onSurface: TiltColors.ink,
     ),
-    appBarTheme: const AppBarTheme(
-      backgroundColor: TiltColors.neutral,
+    appBarTheme: AppBarTheme(
+      backgroundColor: TiltPalette.dark.mesh,
       foregroundColor: TiltColors.ink,
       elevation: 0,
       scrolledUnderElevation: 0,

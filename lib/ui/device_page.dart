@@ -173,7 +173,6 @@ class _DevicePageState extends State<DevicePage> {
         'Uncalibrated ${formatSg(_view.rawSg, isPro: _view.isPro)} · ${formatTempF(_view.rawTempF, isPro: _view.isPro)}';
 
     return Scaffold(
-      backgroundColor: p.neutral,
       body: Stack(
         fit: StackFit.expand,
         children: [

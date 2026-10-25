@@ -21,7 +21,6 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = TiltPalette.of(context);
     return Scaffold(
-      backgroundColor: p.neutral,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -32,10 +31,7 @@ class SettingsPage extends StatelessWidget {
               children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('Back', style: soraBody.copyWith(color: p.ink)),
-              ),
+              child: BackChevron(onPressed: () => Navigator.of(context).pop()),
             ),
             const SizedBox(height: 8),
             Text('App Settings', style: soraTitle.copyWith(color: p.primary)),
@@ -101,7 +97,7 @@ class SettingsPage extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: ChamferPlate(
-        fill: selected ? p.primary : p.surface,
+        fill: selected ? p.primary : p.stalePlate,
         edge: selected ? p.primary : p.secondary,
         child: Text(
           label,

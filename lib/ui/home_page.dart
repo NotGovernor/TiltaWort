@@ -13,6 +13,7 @@ import 'package:tiltawort/ui/chamfer.dart';
 import 'package:tiltawort/ui/device_page.dart';
 import 'package:tiltawort/ui/home_status.dart';
 import 'package:tiltawort/ui/settings_page.dart';
+import 'package:tiltawort/ui/status_chip.dart';
 import 'package:tiltawort/ui/theme.dart';
 
 class HomePage extends StatefulWidget {
@@ -82,17 +83,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _onAd(TiltAdvertisementEvent event) {
-    unawaited(_onAdAsync(event));
-  }
-
-  Future<void> _onAdAsync(TiltAdvertisementEvent event) async {
     final uuid = event.advertisement.uuid;
-    var prefs = _prefsCache[uuid];
-    if (prefs == null && widget.prefs != null) {
-      prefs = await widget.prefs!.load(uuid);
-      if (!mounted) return;
-      _prefsCache[uuid] = prefs;
-    }
+    final prefs = _prefsCache[uuid];
     final name = _nameFor(uuid, prefs, _tiles[uuid]?.name ?? '');
     final view = TiltView.fromEvent(
       event,
@@ -105,6 +97,9 @@ class _HomePageState extends State<HomePage> {
     );
     if (!mounted) return;
     setState(() => _tiles[uuid] = view);
+    if (prefs == null && widget.prefs != null) {
+      unawaited(_hydrateUuid(uuid));
+    }
   }
 
   Future<void> _hydrateUuid(String uuid) async {
@@ -177,75 +172,69 @@ class _HomePageState extends State<HomePage> {
 
     final palette = TiltPalette.of(context);
     return Scaffold(
-      backgroundColor: palette.neutral,
       body: Stack(
         fit: StackFit.expand,
         children: [
           const FacetedMesh(),
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-              _Header(
-                onGear: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => SettingsPage(
-                        themeMode: widget.themeMode,
-                        onThemeMode: widget.onThemeMode ?? (_) {},
-                        version: widget.version,
-                        radio: _radio,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-              if (status.kind == HomeStatusKind.radioOff)
-                _RadioOffBanner(copy: status.line)
-              else if (status.kind == HomeStatusKind.empty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 40),
-                  child: Text(status.line, style: soraBody),
-                )
-              else
-                Text(status.line, style: soraMuted),
-              if (tiles.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final two = constraints.maxWidth >= 720;
-                      final gap = 24.0;
-                      final tileWidth = two
-                          ? (constraints.maxWidth - gap) / 2
-                          : constraints.maxWidth;
-                      return ListView(
-                        children: [
-                          Wrap(
-                            spacing: gap,
-                            runSpacing: gap,
-                            children: [
-                              for (final tile in tiles)
-                                SizedBox(
-                                  width: tileWidth,
-                                  child: TiltTile(
-                                    view: tile,
-                                    now: now,
-                                    onTap: () => _openDevice(tile),
-                                  ),
-                                ),
-                            ],
+                  _Header(
+                    onGear: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SettingsPage(
+                            themeMode: widget.themeMode,
+                            onThemeMode: widget.onThemeMode ?? (_) {},
+                            version: widget.version,
+                            radio: _radio,
                           ),
-                        ],
+                        ),
                       );
                     },
                   ),
-                ),
-              ],
-            ],
+                  const SizedBox(height: 8),
+                  if (status.kind == HomeStatusKind.radioOff)
+                    _RadioOffBanner(copy: status.line)
+                  else if (status.kind == HomeStatusKind.empty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 40),
+                      child: Text(
+                        status.line,
+                        style: soraBody.copyWith(color: palette.ink),
+                      ),
+                    )
+                  else
+                    Text(
+                      status.line,
+                      style: soraMuted.copyWith(color: palette.muted),
+                    ),
+                  if (tiles.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.topLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 560),
+                          child: ListView.separated(
+                            itemCount: tiles.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 2),
+                            itemBuilder: (context, i) {
+                              return TiltTile(
+                                view: tiles[i],
+                                now: now,
+                                onTap: () => _openDevice(tiles[i]),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
@@ -265,7 +254,12 @@ class _Header extends StatelessWidget {
     final palette = TiltPalette.of(context);
     return Row(
       children: [
-        const Expanded(child: Text('Tilt-a-Wort', style: soraTitle)),
+        Expanded(
+          child: Text(
+            'Tilt-a-Wort',
+            style: soraTitle.copyWith(color: palette.primary),
+          ),
+        ),
         IconButton(
           tooltip: 'App settings',
           onPressed: onGear,
@@ -333,99 +327,134 @@ class TiltTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = TiltPalette.of(context);
     final live = view.isLiveAt(now);
-    final ink = live ? palette.ink : palette.secondary;
-    final readout = live ? palette.primary : palette.secondary;
     final name = view.name.trim();
+    final plate = live ? palette.livePlate : palette.stalePlate;
+    final ink = live ? palette.liveInk : palette.staleInk;
+    final muted = live
+        ? Color.lerp(ink, palette.muted, 0.45)!
+        : palette.muted;
+    final sgColor = live ? palette.liveGold : Color.lerp(palette.primary, ink, 0.2)!;
+    final tempColor = live ? palette.tempOnLive : palette.tempOnStale;
+    final colorWord = view.color;
+    final sg = formatSg(view.calSg, isPro: view.isPro);
+    final temp = formatTempF(view.calTempF, isPro: view.isPro);
 
     return Semantics(
       button: true,
       label: name.isEmpty ? view.color : '${view.color} $name',
       child: GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 88),
-      child: ChamferPlate(
-        chamfer: 12,
-        fill: palette.surface,
-        edge: live ? palette.primary : palette.secondary,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 148),
+          child: ChamferPlate(
+            chamfer: 20,
+            bevel: 6,
+            fill: plate,
+            edge: live ? palette.primary : palette.secondary,
+            strip: factorySwatch(view.color),
+            stripFactor: 0.15,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: ChamferPlate(
-                    chamfer: 4,
-                    fill: factorySwatch(view.color),
-                    edge: palette.secondary,
-                    padding: EdgeInsets.zero,
-                    child: const SizedBox.expand(),
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name.isEmpty ? view.color : name,
+                            style: soraBody.copyWith(
+                              color: live ? palette.liveGold : ink,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              height: 1.15,
+                            ),
+                          ),
+                          if (name.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              colorWord,
+                              style: soraMuted.copyWith(color: muted, fontSize: 13),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    StatusChip(live: live),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  view.color,
-                  style: soraBody.copyWith(color: ink, fontWeight: FontWeight.w600),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(sg, style: oxaniumReadout.copyWith(color: sgColor)),
+                            const SizedBox(width: 8),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'SG',
+                                    style: soraLabel.copyWith(
+                                      color: muted,
+                                      fontSize: 10,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Temp.',
+                                    style: soraLabel.copyWith(
+                                      color: muted,
+                                      fontSize: 10,
+                                      letterSpacing: 0.6,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          temp,
+                          style: oxaniumReadout.copyWith(
+                            color: tempColor,
+                            fontSize: 36,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            if (name.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(name, style: soraBody.copyWith(color: ink)),
-            ],
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
+                const SizedBox(height: 6),
+                Align(
+                  alignment: Alignment.centerRight,
                   child: Text(
-                    formatSg(view.calSg, isPro: view.isPro),
-                    style: oxaniumReadout.copyWith(color: readout),
-                  ),
-                ),
-                Text(
-                  formatTempF(view.calTempF, isPro: view.isPro),
-                  style: oxaniumReadout.copyWith(
-                    color: readout,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
+                    relativeAgo(view.lastPacket, now),
+                    style: soraMuted.copyWith(color: muted, fontSize: 12),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            _StatusChip(live: live),
-          ],
-        ),
-      ),
-    ),
-    ),
-    );
-  }
-}
-
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.live});
-
-  final bool live;
-
-  @override
-  Widget build(BuildContext context) {
-    final palette = TiltPalette.of(context);
-    return ChamferPlate(
-      chamfer: 8,
-      fill: live ? palette.primary : palette.surface,
-      edge: live ? palette.primary : palette.secondary,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-      child: Text(
-        live ? 'Live' : 'Stale',
-        style: TextStyle(
-          fontFamily: 'Sora',
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: live ? palette.onPrimary : palette.secondary,
+          ),
         ),
       ),
     );

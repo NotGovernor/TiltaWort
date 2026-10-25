@@ -353,7 +353,10 @@ class FacetedMesh extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = TiltPalette.of(context);
     return CustomPaint(
-      painter: FacetedMeshPainter(base: p.neutral, line: p.mesh),
+      painter: FacetedMeshPainter(
+        base: p.mesh,
+        line: p.meshLine,
+      ),
       child: const SizedBox.expand(),
     );
   }
@@ -413,11 +416,9 @@ class FacetedMeshPainter extends CustomPainter {
       ..close();
     final h = (r * 13 + col * 7 + k * 3) % 9;
     final t = ((h - 4) / 8).clamp(-1.0, 1.0);
-    final fill = Color.lerp(
-      const Color(0xFF050814),
-      const Color(0xFF1A3A58),
-      (t + 1) / 2,
-    )!;
+    final lo = Color.lerp(base, const Color(0xFF000000), 0.35)!;
+    final hi = Color.lerp(base, const Color(0xFFFFFFFF), 0.16)!;
+    final fill = Color.lerp(lo, hi, (t + 1) / 2)!;
     canvas.drawPath(path, Paint()..color = fill);
     canvas.drawPath(path, stroke);
   }
