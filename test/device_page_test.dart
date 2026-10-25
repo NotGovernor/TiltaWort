@@ -186,8 +186,44 @@ void main() {
       logs: logs,
       now: () => t0,
     );
-    expect(find.text('Start log'), findsOneWidget);
-    expect(find.text('End log'), findsOneWidget);
-    expect(find.text('Log once'), findsOneWidget);
+    expect(find.text('Start recording'), findsOneWidget);
+    expect(find.text('Stop recording'), findsOneWidget);
+    expect(find.text('Snapshot'), findsOneWidget);
+    expect(find.text('Not recording'), findsOneWidget);
+    expect(find.text('Off'), findsNothing);
+    expect(find.text('On'), findsNothing);
+    expect(find.text('Start log'), findsNothing);
+  });
+
+  testWidgets('start recording then delete file shows Not recording',
+      (tester) async {
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    await tester.runAsync(() async {
+      await logs.startLog(color: 'Pink', beer: 'House Pale', at: t0);
+    });
+    expect(logs.isOpen, isTrue);
+
+    final scanner = FakeTiltScanner(script: const []);
+    await _pumpDevice(
+      tester,
+      scanner: scanner,
+      view: pinkView(t0),
+      prefs: prefs,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+
+    expect(find.textContaining('Recording ·'), findsOneWidget);
+    expect(find.text('Not recording'), findsNothing);
+
+    await tester.runAsync(() async {
+      await logs.deleteFile(logs.active!);
+    });
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(logs.isOpen, isFalse);
+    expect(find.text('Not recording'), findsOneWidget);
+    expect(find.textContaining('Recording ·'), findsNothing);
   });
 }

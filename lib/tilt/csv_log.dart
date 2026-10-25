@@ -4,6 +4,40 @@ import 'dart:io';
 bool recordingUi({required bool prefsLogging, required bool fileOpen}) =>
     fileOpen;
 
+class LogInterval {
+  const LogInterval(this.seconds, this.chip, this.status);
+  final int seconds;
+  final String chip;
+  final String status;
+}
+
+const logIntervals = [
+  LogInterval(0, 'Every reading (~5 s)', 'every reading'),
+  LogInterval(60, 'Every 1 min', 'every 1 min'),
+  LogInterval(300, 'Every 5 min', 'every 5 min'),
+  LogInterval(900, 'Every 15 min', 'every 15 min'),
+  LogInterval(3600, 'Every 1 hour', 'every 1 hour'),
+  LogInterval(21600, 'Every 6 hours', 'every 6 hours'),
+  LogInterval(86400, 'Once a day', 'once a day'),
+];
+
+String intervalStatus(int seconds) {
+  for (final i in logIntervals) {
+    if (i.seconds == seconds) return i.status;
+  }
+  return 'every ${seconds}s';
+}
+
+String recordingStatusLine({
+  required bool isOpen,
+  String? fileName,
+  required int intervalSeconds,
+}) {
+  if (!isOpen) return 'Not recording';
+  final name = (fileName == null || fileName.isEmpty) ? 'log.csv' : fileName;
+  return 'Recording · $name · ${intervalStatus(intervalSeconds)}';
+}
+
 class CsvLogStore {
   CsvLogStore(this.directory, {this.reveal});
 

@@ -112,7 +112,7 @@ class _DevicePageState extends State<DevicePage> {
       view.uuid,
       SessionSample(at: view.lastPacket, sg: view.calSg, tempF: view.calTempF),
     );
-    if (_prefs.logging && widget.logs.isOpen) {
+    if (widget.logs.isOpen) {
       final temp = _prefs.tempUnit == 'C' ? fToC(view.calTempF) : view.calTempF;
       widget.logs.append(
         timestamp: view.lastPacket,
@@ -121,6 +121,8 @@ class _DevicePageState extends State<DevicePage> {
         color: view.color,
         beer: _prefs.name,
         comment: '',
+        force: false,
+        intervalSeconds: _prefs.logIntervalSeconds,
       );
     }
     if (mounted) setState(() => _view = view);
@@ -163,92 +165,195 @@ class _DevicePageState extends State<DevicePage> {
 
     return Scaffold(
       backgroundColor: p.neutral,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
-              child: Row(
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    child: Text('Back', style: soraBody.copyWith(color: p.ink)),
-                  ),
-                  _facet(_view.color),
-                  const SizedBox(width: 8),
-                  Text(_view.color, style: soraLabel.copyWith(color: p.secondary)),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      beer,
-                      style: soraTitle.copyWith(color: p.primary, fontSize: 16),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  StatusChip(live: live),
-                ],
-              ),
-            ),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                  Text(
-                    gNum,
-                    style: oxaniumReadout.copyWith(fontSize: 56, color: p.ink),
-                  ),
-                  Text(gUnit, style: soraLabel.copyWith(color: p.muted)),
-                  const SizedBox(height: 8),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const FacetedMesh(),
+          SafeArea(
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
+                  child: Row(
                     children: [
-                      Text(
-                        tNum,
-                        style: oxaniumReadout.copyWith(fontSize: 36, color: p.ink),
+                      BackChevron(onPressed: () => Navigator.of(context).pop()),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              beer,
+                              style: soraTitle.copyWith(
+                                color: p.primary,
+                                fontSize: 22,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Row(
+                              children: [
+                                Text(
+                                  _view.color,
+                                  style: soraMuted.copyWith(color: p.muted),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  _view.isPro ? 'Pro' : 'Tilt',
+                                  style: soraLabel.copyWith(color: p.secondary),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8, bottom: 4),
-                        child: Text(tUnit, style: soraLabel.copyWith(color: p.muted)),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          StatusChip(live: live),
+                          const SizedBox(height: 4),
+                          Text(
+                            relativeAgo(_view.lastPacket, now),
+                            style: soraMuted.copyWith(color: p.muted, fontSize: 12),
+                          ),
+                          Text(
+                            rssiLabel(_view.rssiDbm),
+                            style: soraMuted.copyWith(color: p.muted, fontSize: 11),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(uncalCaption, style: soraMuted.copyWith(color: p.muted)),
-                  Text(
-                    _view.isPro ? 'Pro' : 'Tilt',
-                    style: soraLabel.copyWith(color: p.secondary),
+                ),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                  ChamferPlate(
+                    chamfer: 18,
+                    bevel: 6,
+                    fill: live ? p.livePlate : p.stalePlate,
+                    edge: p.primary,
+                    accentTl: p.primary,
+                    accentTr: p.tertiary,
+                    padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    gNum,
+                                    style: oxaniumHero.copyWith(color: p.primary),
+                                  ),
+                                  Text(
+                                    gUnit,
+                                    style: soraLabel.copyWith(color: p.primary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '$tNum$tUnit',
+                                  style: oxaniumReadout.copyWith(
+                                    color: live ? p.tempOnLive : p.tempOnStale,
+                                    fontSize: 36,
+                                  ),
+                                ),
+                                Text(
+                                  'Temp',
+                                  style: soraLabel.copyWith(color: p.muted),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          uncalCaption,
+                          style: soraMuted.copyWith(color: p.muted, fontSize: 12),
+                        ),
+                        Text(
+                          localStamp(_view.lastPacket),
+                          style: soraMuted.copyWith(color: p.muted, fontSize: 11),
+                        ),
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 20),
-                  Text(
-                    '${relativeAgo(_view.lastPacket, now)} · ${localStamp(_view.lastPacket)} · ${rssiLabel(_view.rssiDbm)}',
-                    style: soraMuted.copyWith(color: p.muted),
-                  ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 12),
                   _section(
                     p,
                     'Chart (this session)',
                     samples.isEmpty
-                        ? Text('No samples yet', style: soraMuted.copyWith(color: p.muted))
+                        ? ChamferPlate(
+                            chamfer: 12,
+                            bevel: 4,
+                            inset: true,
+                            shadow: false,
+                            fill: Color.lerp(p.neutral, p.stalePlate, 0.4)!,
+                            edge: p.secondary,
+                            padding: const EdgeInsets.fromLTRB(16, 28, 16, 28),
+                            child: Center(
+                              child: Text(
+                                'No samples yet',
+                                style: soraMuted.copyWith(color: p.muted),
+                              ),
+                            ),
+                          )
                         : Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text('SG', style: soraLabel.copyWith(color: p.primary)),
-                              SeriesPlot(
-                                samples: samples,
-                                line: p.primary,
-                                yOf: (s) => s.sg,
+                              Row(
+                                children: [
+                                  _legendDot(p.primary),
+                                  const SizedBox(width: 6),
+                                  Text('SG', style: soraLabel.copyWith(color: p.primary)),
+                                  const SizedBox(width: 14),
+                                  _legendDot(p.tertiary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Temp',
+                                    style: soraLabel.copyWith(color: p.tertiary),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 8),
-                              Text('Temp', style: soraLabel.copyWith(color: p.tertiary)),
-                              SeriesPlot(
-                                samples: samples,
-                                line: p.tertiary,
-                                yOf: (s) => s.tempF,
+                              ChamferPlate(
+                                chamfer: 12,
+                                bevel: 4,
+                                inset: true,
+                                shadow: false,
+                                fill: Color.lerp(p.neutral, p.stalePlate, 0.4)!,
+                                edge: p.secondary,
+                                padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+                                child: Column(
+                                  children: [
+                                    SeriesPlot(
+                                      samples: samples,
+                                      line: p.primary,
+                                      yOf: (s) => s.sg,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    SeriesPlot(
+                                      samples: samples,
+                                      line: p.tertiary,
+                                      yOf: (s) => s.tempF,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
+                    inset: true,
                   ),
                   const SizedBox(height: 16),
                   _section(
@@ -257,15 +362,34 @@ class _DevicePageState extends State<DevicePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
+                        Text(
+                          recordingStatusLine(
+                            isOpen: recordingUi(
+                              prefsLogging: _prefs.logging,
+                              fileOpen: widget.logs.isOpen,
+                            ),
+                            fileName: widget.logs.active?.uri.pathSegments.last,
+                            intervalSeconds: _prefs.logIntervalSeconds,
+                          ),
+                          style: soraBody.copyWith(color: p.ink),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            _choice(p, 'Off', !_prefs.logging, () {
-                              _setPrefs(_prefs.copyWith(logging: false));
-                            }),
-                            const SizedBox(width: 8),
-                            _choice(p, 'On', _prefs.logging, () {
-                              _setPrefs(_prefs.copyWith(logging: true));
-                            }),
+                            for (final i in logIntervals) ...[
+                              _choice(
+                                p,
+                                i.chip,
+                                _prefs.logIntervalSeconds == i.seconds,
+                                () {
+                                  _setPrefs(
+                                    _prefs.copyWith(logIntervalSeconds: i.seconds),
+                                  );
+                                },
+                              ),
+                            ],
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -273,9 +397,9 @@ class _DevicePageState extends State<DevicePage> {
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _btn(p, 'Start log', _startLog),
-                            _btn(p, 'End log', _endLog, primary: false),
-                            _btn(p, 'Log once', _logOnce, primary: false),
+                            _btn(p, 'Start recording', _startLog, kind: MetalButtonKind.gold),
+                            _btn(p, 'Stop recording', _endLog, kind: MetalButtonKind.steel),
+                            _btn(p, 'Snapshot', _logOnce, kind: MetalButtonKind.blue),
                           ],
                         ),
                         const SizedBox(height: 8),
@@ -411,6 +535,9 @@ class _DevicePageState extends State<DevicePage> {
                                 TextButton(
                                   onPressed: () async {
                                     await widget.logs.deleteFile(f);
+                                    if (!widget.logs.isOpen) {
+                                      await _setPrefs(_prefs.copyWith(logging: false));
+                                    }
                                     await _refreshFiles();
                                   },
                                   child: Text('Delete', style: soraMuted.copyWith(color: p.muted)),
@@ -426,15 +553,20 @@ class _DevicePageState extends State<DevicePage> {
               ),
             ),
           ],
-        ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _section(TiltPalette p, String title, Widget child) {
+  Widget _section(TiltPalette p, String title, Widget child, {bool inset = false}) {
     return ChamferPlate(
-      fill: p.surface,
-      edge: p.secondary.withValues(alpha: 0.45),
+      chamfer: 14,
+      bevel: 5,
+      fill: p.stalePlate,
+      edge: p.secondary,
+      inset: inset,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -446,15 +578,24 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
+  Widget _legendDot(Color color) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+    );
+  }
+
   Widget _choice(TiltPalette p, String label, bool selected, VoidCallback onTap) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: ChamferPlate(
+        chamfer: 8,
+        bevel: 3,
+        fill: selected ? p.primary : p.stalePlate,
+        edge: selected ? p.primary : p.secondary,
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: selected ? p.primary : p.surface,
-          border: Border.all(color: selected ? p.primary : p.secondary),
-        ),
+        shadow: false,
         child: Text(
           label,
           style: soraLabel.copyWith(color: selected ? p.onPrimary : p.ink),
@@ -463,20 +604,17 @@ class _DevicePageState extends State<DevicePage> {
     );
   }
 
-  Widget _btn(TiltPalette p, String label, VoidCallback onTap, {bool primary = true}) {
-    return GestureDetector(
+  Widget _btn(
+    TiltPalette p,
+    String label,
+    VoidCallback onTap, {
+    MetalButtonKind kind = MetalButtonKind.gold,
+    bool primary = true,
+  }) {
+    return MetalButton(
+      label: label,
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: primary ? p.primary : p.surface,
-          border: Border.all(color: p.primary),
-        ),
-        child: Text(
-          label,
-          style: soraLabel.copyWith(color: primary ? p.onPrimary : p.primary),
-        ),
-      ),
+      kind: primary ? kind : MetalButtonKind.steel,
     );
   }
 
@@ -505,19 +643,6 @@ class _DevicePageState extends State<DevicePage> {
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.zero,
           borderSide: BorderSide(color: p.primary),
-        ),
-      ),
-    );
-  }
-
-  Widget _facet(String color) {
-    return CustomPaint(
-      painter: ChamferEdgePainter(chamfer: 3, edge: TiltColors.secondary),
-      child: ClipPath(
-        clipper: const ChamferClipper(chamfer: 3),
-        child: ColoredBox(
-          color: factorySwatch(color),
-          child: const SizedBox(width: 14, height: 14),
         ),
       ),
     );
@@ -607,6 +732,8 @@ class _DevicePageState extends State<DevicePage> {
       color: _view.color,
       beer: _prefs.name,
       comment: _comment.text,
+      force: true,
+      intervalSeconds: _prefs.logIntervalSeconds,
     );
     _comment.clear();
     await _refreshFiles();
