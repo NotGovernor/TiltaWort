@@ -43,9 +43,11 @@ class _DevicePageState extends State<DevicePage> {
   late final TextEditingController _uncal;
   late final TextEditingController _actual;
   late final TextEditingController _comment;
+  late final FocusNode _nameFocus;
   StreamSubscription<TiltAdvertisementEvent>? _ads;
   Timer? _tick;
   List<File> _files = [];
+  String? _calError;
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
@@ -58,6 +60,10 @@ class _DevicePageState extends State<DevicePage> {
     _uncal = TextEditingController();
     _actual = TextEditingController();
     _comment = TextEditingController();
+    _nameFocus = FocusNode();
+    _nameFocus.addListener(() {
+      if (!_nameFocus.hasFocus) _commitName();
+    });
     _ads = widget.scanner.advertisements.listen(_onAd);
     widget.scanner.start();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -133,6 +139,7 @@ class _DevicePageState extends State<DevicePage> {
   void dispose() {
     _tick?.cancel();
     _ads?.cancel();
+    _nameFocus.dispose();
     _name.dispose();
     _uncal.dispose();
     _actual.dispose();
@@ -445,17 +452,24 @@ class _DevicePageState extends State<DevicePage> {
                         _field(p, _uncal, 'Uncal SG'),
                         const SizedBox(height: 8),
                         _field(p, _actual, 'Actual SG'),
+                        if (_calError != null) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            _calError!,
+                            style: soraMuted.copyWith(color: p.primary),
+                          ),
+                        ],
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
                           children: [
-                            _btn(p, 'Fill uncal', _fillUncal, primary: false),
+                            _btn(p, 'Use live Tilt reading', _fillUncal, primary: false),
                             _btn(p, 'Add point', _addPoint, primary: false),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        _btn(p, 'Tilt-a-Wort cal → 1.000', _waterShortcut),
+                        _btn(p, 'Tilt-a-Wort water cal → 1.000', _waterShortcut),
                         const SizedBox(height: 6),
                         Text(
                           'Stored on this device. Not written to the Tilt.',
@@ -471,9 +485,30 @@ class _DevicePageState extends State<DevicePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _field(p, _name, 'Beer name', onChanged: (v) {
-                          _setPrefs(_prefs.copyWith(name: v));
-                        }),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _field(
+                                p,
+                                _name,
+                                'Beer name',
+                                focusNode: _nameFocus,
+                                onChanged: (v) {
+                                  if (v.trim().isNotEmpty) {
+                                    _setPrefs(_prefs.copyWith(name: v));
+                                  }
+                                },
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () {
+                                _name.clear();
+                                _nameFocus.requestFocus();
+                              },
+                              child: Text('Clear', style: soraMuted.copyWith(color: p.muted)),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         Text('Temp', style: soraLabel.copyWith(color: p.secondary)),
                         const SizedBox(height: 8),
@@ -500,6 +535,22 @@ class _DevicePageState extends State<DevicePage> {
                             _choice(p, '°P', _prefs.gravityUnit == 'P', () {
                               _setPrefs(_prefs.copyWith(gravityUnit: 'P'));
                             }),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _gravityHelp,
+                              child: ChamferPlate(
+                                chamfer: 8,
+                                bevel: 4,
+                                fill: p.aluminum,
+                                edge: p.secondary,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                shadow: true,
+                                child: Text(
+                                  '?',
+                                  style: soraLabel.copyWith(color: p.stampInk),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -624,9 +675,11 @@ class _DevicePageState extends State<DevicePage> {
     TextEditingController c,
     String hint, {
     ValueChanged<String>? onChanged,
+    FocusNode? focusNode,
   }) {
     return TextField(
       controller: c,
+      focusNode: focusNode,
       onChanged: onChanged,
       style: soraBody.copyWith(color: p.ink),
       cursorColor: p.primary,
@@ -656,7 +709,11 @@ class _DevicePageState extends State<DevicePage> {
   Future<void> _addPoint() async {
     final u = double.tryParse(_uncal.text.trim());
     final a = double.tryParse(_actual.text.trim());
-    if (u == null || a == null) return;
+    if (u == null || a == null) {
+      setState(() => _calError = 'Need numbers in both Uncal SG and Actual SG.');
+      return;
+    }
+    setState(() => _calError = null);
     await _setPrefs(_prefs.copyWith(cal: [..._prefs.cal, CalPoint(uncalSg: u, actualSg: a)]));
     _uncal.clear();
     _actual.clear();
@@ -676,7 +733,7 @@ class _DevicePageState extends State<DevicePage> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tilt-a-Wort cal → 1.000', style: soraTitle.copyWith(color: p.primary)),
+                Text('Tilt-a-Wort water cal → 1.000', style: soraTitle.copyWith(color: p.primary)),
                 const SizedBox(height: 8),
                 Text('Does not tare the float.', style: soraBody.copyWith(color: p.ink)),
                 const SizedBox(height: 16),
@@ -701,7 +758,54 @@ class _DevicePageState extends State<DevicePage> {
     );
     if (ok != true) return;
     await _setPrefs(
-      _prefs.copyWith(cal: [..._prefs.cal, waterCal(currentRaw: _view.rawSg)]),
+      _prefs.copyWith(cal: upsertWaterCal(_prefs.cal, currentRaw: _view.rawSg)),
+    );
+  }
+
+  void _commitName() {
+    final next = _name.text.trim().isEmpty ? 'Untitled' : _name.text.trim();
+    if (_name.text != next) _name.text = next;
+    if (_prefs.name != next) _setPrefs(_prefs.copyWith(name: next));
+  }
+
+  Future<void> _gravityHelp() async {
+    final p = TiltPalette.of(context);
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: ChamferPlate(
+            fill: p.surface,
+            edge: p.primary,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Plato', style: soraTitle.copyWith(color: p.primary)),
+                const SizedBox(height: 8),
+                Text(
+                  '°P = 259 − (259 / SG)',
+                  style: soraBody.copyWith(color: p.ink),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Same formula as Tilt. Live °P is on the hero when you pick °P.',
+                  style: soraMuted.copyWith(color: p.muted),
+                ),
+                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('Close', style: soraBody.copyWith(color: p.primary)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

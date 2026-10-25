@@ -31,3 +31,13 @@ double applyCal(double uncalSg, List<CalPoint> points) {
 CalPoint waterCal({required double currentRaw}) =>
     CalPoint(uncalSg: currentRaw, actualSg: 1.000);
 
+/// One water point: replace any existing actual 1.000, do not append a second.
+List<CalPoint> upsertWaterCal(List<CalPoint> points, {required double currentRaw}) {
+  final water = waterCal(currentRaw: currentRaw);
+  return [
+    for (final p in points)
+      if ((p.actualSg - 1.000).abs() > 1e-9) p,
+    water,
+  ];
+}
+

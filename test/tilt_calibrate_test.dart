@@ -24,4 +24,19 @@ void main() {
     expect(p.uncalSg, closeTo(1.002, 1e-9));
     expect(p.actualSg, closeTo(1.000, 1e-9));
   });
+
+  test('water cal upserts the 1.000 point', () {
+    final first = upsertWaterCal(const [], currentRaw: 1.002);
+    expect(first, hasLength(1));
+    final withOther = upsertWaterCal(
+      [CalPoint(uncalSg: 1.020, actualSg: 1.016), ...first],
+      currentRaw: 1.004,
+    );
+    expect(withOther, hasLength(2));
+    expect(withOther.where((p) => (p.actualSg - 1.000).abs() < 1e-9), hasLength(1));
+    expect(
+      withOther.firstWhere((p) => (p.actualSg - 1.000).abs() < 1e-9).uncalSg,
+      closeTo(1.004, 1e-9),
+    );
+  });
 }

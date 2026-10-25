@@ -146,9 +146,9 @@ void main() {
       logs: logs,
       now: () => t0,
     );
-    expect(find.text('Tilt-a-Wort cal → 1.000'), findsOneWidget);
-    await tester.ensureVisible(find.text('Tilt-a-Wort cal → 1.000'));
-    await tester.tap(find.text('Tilt-a-Wort cal → 1.000'));
+    expect(find.text('Tilt-a-Wort water cal → 1.000'), findsOneWidget);
+    await tester.ensureVisible(find.text('Tilt-a-Wort water cal → 1.000'));
+    await tester.tap(find.text('Tilt-a-Wort water cal → 1.000'));
     await tester.pumpAndSettle();
     expect(find.text('Does not tare the float.'), findsOneWidget);
   });
@@ -225,5 +225,73 @@ void main() {
     expect(logs.isOpen, isFalse);
     expect(find.text('Not recording'), findsOneWidget);
     expect(find.textContaining('Recording ·'), findsNothing);
+  });
+
+  testWidgets('gravity help shows Plato formula', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: prefs,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.tap(find.text('?'));
+    await tester.pump();
+    expect(find.textContaining('259 − (259 / SG)'), findsOneWidget);
+  });
+
+  testWidgets('empty name unfocus becomes Untitled', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: prefs,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.tap(find.text('Clear'));
+    await tester.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pump();
+    expect(find.widgetWithText(TextField, 'Untitled'), findsOneWidget);
+  });
+
+  testWidgets('bad cal point shows an error', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: prefs,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.tap(find.text('Add point'));
+    await tester.pump();
+    expect(
+      find.text('Need numbers in both Uncal SG and Actual SG.'),
+      findsOneWidget,
+    );
   });
 }
