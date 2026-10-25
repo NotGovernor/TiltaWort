@@ -1,5 +1,5 @@
 name: tiltawort
-description: "A new Flutter project."
+description: "Listens to Tilt hydrometer iBeacon advertisements."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -56,6 +56,14 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  fonts:
+    - family: Oxanium
+      fonts:
+        - asset: fonts/Oxanium-VariableFont_wght.ttf
+    - family: Sora
+      fonts:
+        - asset: fonts/Sora-VariableFont_wght.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
