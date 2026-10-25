@@ -48,6 +48,7 @@ class _DevicePageState extends State<DevicePage> {
   Timer? _tick;
   List<File> _files = [];
   String? _calError;
+  Duration _chartPan = Duration.zero;
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
@@ -349,12 +350,20 @@ class _DevicePageState extends State<DevicePage> {
                                       samples: samples,
                                       line: p.primary,
                                       yOf: (s) => s.sg,
+                                      now: now,
+                                      yFormat: (y) => y.toStringAsFixed(_view.isPro ? 4 : 3),
+                                      pan: _chartPan,
+                                      onPan: _onChartPan,
                                     ),
                                     const SizedBox(height: 8),
                                     SeriesPlot(
                                       samples: samples,
                                       line: p.tertiary,
                                       yOf: (s) => s.tempF,
+                                      now: now,
+                                      yFormat: (y) => y.toStringAsFixed(_view.isPro ? 1 : 0),
+                                      pan: _chartPan,
+                                      onPan: _onChartPan,
                                     ),
                                   ],
                                 ),
@@ -760,6 +769,17 @@ class _DevicePageState extends State<DevicePage> {
     await _setPrefs(
       _prefs.copyWith(cal: upsertWaterCal(_prefs.cal, currentRaw: _view.rawSg)),
     );
+  }
+
+  void _onChartPan(Duration next) {
+    final samples = widget.history.of(_view.uuid);
+    var pan = next;
+    if (pan.isNegative) pan = Duration.zero;
+    if (samples.isNotEmpty) {
+      final maxPan = _now().difference(samples.first.at);
+      if (pan > maxPan) pan = maxPan;
+    }
+    setState(() => _chartPan = pan);
   }
 
   void _commitName() {
