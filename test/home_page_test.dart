@@ -151,6 +151,13 @@ void main() {
     expect(find.text('Scanning · none live'), findsOneWidget);
   });
 
+  testWidgets('dark Home paints FacetedMesh', (tester) async {
+    final scanner = FakeTiltScanner(script: const []);
+    await _pumpHome(tester, scanner: scanner);
+    expect(find.byType(FacetedMesh), findsOneWidget);
+    expect(find.textContaining('Connected'), findsNothing);
+  });
+
   testWidgets('empty home copy when radio on and nothing heard', (tester) async {
     final scanner = FakeTiltScanner(script: const []);
     await _pumpHome(tester, scanner: scanner);

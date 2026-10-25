@@ -22,10 +22,14 @@ class SettingsPage extends StatelessWidget {
     final p = TiltPalette.of(context);
     return Scaffold(
       backgroundColor: p.neutral,
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const FacetedMesh(),
+          SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
@@ -79,8 +83,10 @@ class SettingsPage extends StatelessWidget {
               'Tilt-a-Wort $version',
               style: soraBody.copyWith(color: p.ink),
             ),
-          ],
-        ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

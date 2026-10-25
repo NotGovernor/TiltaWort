@@ -178,12 +178,16 @@ class _HomePageState extends State<HomePage> {
     final palette = TiltPalette.of(context);
     return Scaffold(
       backgroundColor: palette.neutral,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const FacetedMesh(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
               _Header(
                 onGear: () {
                   Navigator.of(context).push(
@@ -242,8 +246,10 @@ class _HomePageState extends State<HomePage> {
                 ),
               ],
             ],
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

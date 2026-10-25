@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiltawort/tilt/scanner.dart';
+import 'package:tiltawort/ui/chamfer.dart';
 import 'package:tiltawort/ui/settings_page.dart';
 import 'package:tiltawort/ui/theme.dart';
 
@@ -42,5 +43,21 @@ void main() {
       ),
     );
     expect(find.text('Bluetooth is off. This app only listens.'), findsOneWidget);
+  });
+
+  testWidgets('dark Settings paints FacetedMesh', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: tiltDarkTheme(),
+        home: SettingsPage(
+          themeMode: ThemeMode.dark,
+          onThemeMode: (_) {},
+          version: '1.0.0',
+          radio: RadioState.on,
+        ),
+      ),
+    );
+    expect(find.byType(FacetedMesh), findsOneWidget);
+    expect(find.textContaining('Connected'), findsNothing);
   });
 }
