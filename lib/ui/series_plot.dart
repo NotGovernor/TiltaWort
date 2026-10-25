@@ -4,6 +4,26 @@ import 'package:tiltawort/tilt/units.dart';
 
 const chartWindow = Duration(hours: 2);
 
+({DateTime start, DateTime end}) chartSpan(
+  List<SessionSample> samples, {
+  DateTime? now,
+}) {
+  if (samples.isEmpty) {
+    final end = now ?? DateTime.now();
+    return (start: end, end: end.add(const Duration(milliseconds: 1)));
+  }
+  var start = samples.first.at;
+  var end = samples.first.at;
+  for (final s in samples) {
+    if (s.at.isBefore(start)) start = s.at;
+    if (s.at.isAfter(end)) end = s.at;
+  }
+  if (!end.isAfter(start)) {
+    end = start.add(const Duration(milliseconds: 1));
+  }
+  return (start: start, end: end);
+}
+
 List<SessionSample> samplesInWindow(
   List<SessionSample> samples, {
   required DateTime end,
@@ -55,15 +75,24 @@ class _SeriesPlotState extends State<SeriesPlot> {
   double? _hoverX;
   double _plotWidth = 240;
 
-  DateTime get _end => widget.now.subtract(widget.pan);
-  DateTime get _start => _end.subtract(widget.window);
+  DateTime get _end {
+    final span = chartSpan(widget.samples, now: widget.now);
+    return span.end.subtract(widget.pan);
+  }
+
+  DateTime get _start {
+    final span = chartSpan(widget.samples, now: widget.now);
+    return _end.subtract(span.end.difference(span.start));
+  }
+
+  Duration get _window => _end.difference(_start);
 
   String _fmt(double y) => widget.yFormat?.call(y) ?? y.toStringAsFixed(3);
 
   SessionSample? _nearest(double x, double width) {
-    final visible = samplesInWindow(widget.samples, end: _end, window: widget.window);
+    final visible = samplesInWindow(widget.samples, end: _end, window: _window);
     if (visible.isEmpty || width <= 0) return null;
-    final span = widget.window.inMilliseconds.toDouble();
+    final span = _window.inMilliseconds.toDouble();
     SessionSample? best;
     var bestDx = double.infinity;
     for (final s in visible) {
@@ -79,7 +108,7 @@ class _SeriesPlotState extends State<SeriesPlot> {
 
   @override
   Widget build(BuildContext context) {
-    final visible = samplesInWindow(widget.samples, end: _end, window: widget.window);
+    final visible = samplesInWindow(widget.samples, end: _end, window: _window);
     var minY = 0.0;
     var maxY = 1.0;
     if (visible.isNotEmpty) {
@@ -154,7 +183,7 @@ class _SeriesPlotState extends State<SeriesPlot> {
                     onHorizontalDragUpdate: (d) {
                       final box = context.findRenderObject() as RenderBox?;
                       final width = box?.size.width ?? 1;
-                      final ms = widget.window.inMilliseconds;
+                      final ms = _window.inMilliseconds;
                       final shift = (d.delta.dx / width * ms).round();
                       var next = widget.pan + Duration(milliseconds: shift);
                       if (next.isNegative) next = Duration.zero;
@@ -193,7 +222,7 @@ class _SeriesPlotState extends State<SeriesPlot> {
               children: [
                 Text(axisTime(_start)),
                 const Spacer(),
-                Text(axisTime(_start.add(Duration(milliseconds: widget.window.inMilliseconds ~/ 2)))),
+                Text(axisTime(_start.add(Duration(milliseconds: _window.inMilliseconds ~/ 2)))),
                 const Spacer(),
                 Text(axisTime(_end)),
               ],

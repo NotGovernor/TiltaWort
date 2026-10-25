@@ -143,4 +143,29 @@ void main() {
     expect(lines.last, contains('1.02'));
     expect(lines.last, contains('check'));
   });
+
+  test('resumeFromPrefs reopens latest CSV for logging uuids', () async {
+    final t0 = DateTime.utc(2026, 10, 25, 17);
+    await runner.startRecording(uuid: pink, color: 'Pink', beer: 'Pale', at: t0);
+    await runner.ingest(_ad(color: 'Pink', uuid: pink, at: t0, sg: 1.04));
+    final path = logs.activeFor('Pink')!.path;
+    await runner.stopRecording(uuid: pink, color: 'Pink');
+    await prefs.save(pink, const TiltPrefs(logging: true, name: 'Pale'));
+    runner.forgetPrefs(pink);
+
+    final resumed = LogRunner(scanner: scanner, logs: logs, prefs: prefs);
+    final uuids = await resumed.resumeFromPrefs();
+    expect(uuids, [pink]);
+    expect(logs.isOpenFor('Pink'), isTrue);
+    expect(logs.activeFor('Pink')!.path, path);
+    await resumed.ingest(_ad(
+      color: 'Pink',
+      uuid: pink,
+      at: t0.add(const Duration(minutes: 1)),
+      sg: 1.03,
+    ));
+    final text = await logs.activeFor('Pink')!.readAsString();
+    expect(text.split(RegExp(r'\r?\n')).where((l) => l == CsvLogStore.header), hasLength(1));
+    expect(text, contains('1.03'));
+  });
 }

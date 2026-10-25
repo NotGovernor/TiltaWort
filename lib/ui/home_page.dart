@@ -4,7 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
+import 'package:tiltawort/tilt/decode.dart';
 import 'package:tiltawort/tilt/history.dart';
+import 'package:tiltawort/tilt/log_runner.dart';
 import 'package:tiltawort/tilt/models.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
@@ -54,6 +56,9 @@ class _HomePageState extends State<HomePage> {
   StreamSubscription<RadioState>? _radioSub;
   Timer? _tick;
   late final SessionHistory _history;
+  late final PrefsStore _prefsStore;
+  late final CsvLogStore _logs;
+  late final LogRunner _runner;
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
@@ -68,10 +73,22 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _history = widget.history ?? SessionHistory();
+    _prefsStore = widget.prefs ??
+        PrefsStore(File('${Directory.systemTemp.path}/tiltawort-prefs.json'));
+    _logs = widget.logs ??
+        CsvLogStore(Directory('${Directory.systemTemp.path}/tiltawort-logs'));
+    _runner = LogRunner(
+      scanner: widget.scanner,
+      logs: _logs,
+      prefs: _prefsStore,
+      history: _history,
+    );
+    _runner.attach();
     for (final tile in widget.seed) {
       _tiles[tile.uuid] = tile;
       unawaited(_hydrateUuid(tile.uuid));
     }
+    unawaited(_restoreLogging());
     _ads = widget.scanner.advertisements.listen(_onAd);
     _radioSub = widget.scanner.radio.listen((state) {
       if (mounted) setState(() => _radio = state);
@@ -80,6 +97,30 @@ class _HomePageState extends State<HomePage> {
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _restoreLogging() async {
+    if (widget.prefs == null) return;
+    final uuids = await _prefsStore.loggingUuids();
+    if (!mounted) return;
+    var added = false;
+    for (final uuid in uuids) {
+      if (_tiles.containsKey(uuid)) continue;
+      final color = tiltColors[uuid];
+      if (color == null) continue;
+      final loaded = await _prefsStore.load(uuid);
+      _prefsCache[uuid] = loaded;
+      _tiles[uuid] = TiltView.remembered(
+        uuid: uuid,
+        color: color,
+        name: _nameFor(uuid, loaded, ''),
+      );
+      added = true;
+    }
+    if (added && mounted) setState(() {});
+    if (widget.logs != null) {
+      await _runner.resumeFromPrefs();
+    }
   }
 
   void _onAd(TiltAdvertisementEvent event) {
@@ -118,22 +159,24 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _openDevice(TiltView tile) async {
-    final prefs = widget.prefs ??
-        PrefsStore(File('${Directory.systemTemp.path}/tiltawort-prefs.json'));
-    final logs = widget.logs ??
-        CsvLogStore(Directory('${Directory.systemTemp.path}/tiltawort-logs'));
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
         builder: (_) => DevicePage(
           scanner: widget.scanner,
           initial: _tiles[tile.uuid] ?? tile,
-          prefs: prefs,
+          prefs: _prefsStore,
           history: _history,
-          logs: logs,
+          logs: _logs,
+          runner: _runner,
           now: widget.now,
         ),
       ),
     );
+    if (result == 'forgotten') {
+      _prefsCache.remove(tile.uuid);
+      if (mounted) setState(() => _tiles.remove(tile.uuid));
+      return;
+    }
     _prefsCache.remove(tile.uuid);
     await _hydrateUuid(tile.uuid);
   }
@@ -143,6 +186,7 @@ class _HomePageState extends State<HomePage> {
     _tick?.cancel();
     _ads?.cancel();
     _radioSub?.cancel();
+    unawaited(_runner.detach());
     widget.scanner.stop();
     super.dispose();
   }
@@ -326,7 +370,7 @@ class TiltTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final palette = TiltPalette.of(context);
-    final live = view.isLiveAt(now);
+    final live = !view.neverHeard && view.isLiveAt(now);
     final name = view.name.trim();
     final plate = live ? palette.livePlate : palette.stalePlate;
     final ink = live ? palette.liveInk : palette.staleInk;
@@ -336,8 +380,8 @@ class TiltTile extends StatelessWidget {
     final sgColor = live ? palette.liveGold : Color.lerp(palette.primary, ink, 0.2)!;
     final tempColor = live ? palette.tempOnLive : palette.tempOnStale;
     final colorWord = view.color;
-    final sg = formatSg(view.calSg, isPro: view.isPro);
-    final temp = formatTempF(view.calTempF, isPro: view.isPro);
+    final sg = view.neverHeard ? '—' : formatSg(view.calSg, isPro: view.isPro);
+    final temp = view.neverHeard ? '—' : formatTempF(view.calTempF, isPro: view.isPro);
 
     return Semantics(
       button: true,
@@ -448,7 +492,9 @@ class TiltTile extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    relativeAgo(view.lastPacket, now),
+                    relativeAgo(view.lastPacket, now).isEmpty || view.neverHeard
+                        ? ''
+                        : relativeAgo(view.lastPacket, now),
                     style: soraMuted.copyWith(color: muted, fontSize: 12),
                   ),
                 ),

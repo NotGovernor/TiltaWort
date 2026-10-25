@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
+import 'package:tiltawort/tilt/decode.dart';
 import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
@@ -49,6 +50,8 @@ class LogRunner {
 
   void forgetPrefs(String uuid) => _cache.remove(uuid);
 
+  void updatePrefs(String uuid, TiltPrefs next) => _cache[uuid] = next;
+
   Future<void> startRecording({
     required String uuid,
     required String color,
@@ -71,6 +74,23 @@ class LogRunner {
     final next = current.copyWith(logging: false);
     _cache[uuid] = next;
     await prefs.save(uuid, next);
+  }
+
+  /// Reopen latest CSV for every uuid with prefs.logging == true.
+  Future<List<String>> resumeFromPrefs() async {
+    final uuids = await prefs.loggingUuids();
+    for (final uuid in uuids) {
+      final color = tiltColors[uuid];
+      if (color == null) continue;
+      _cache[uuid] = await prefs.load(uuid);
+      final file = await logs.resumeLatest(color);
+      if (file != null && history != null && await file.exists()) {
+        for (final sample in samplesFromCsv(await file.readAsString())) {
+          history!.add(uuid, sample);
+        }
+      }
+    }
+    return uuids;
   }
 
   Future<void> snapshot({

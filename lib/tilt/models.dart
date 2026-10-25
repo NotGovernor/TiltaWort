@@ -30,6 +30,26 @@ class TiltView {
   bool isLiveAt(DateTime now) =>
       now.difference(lastPacket) <= const Duration(seconds: 30);
 
+  bool get neverHeard => lastPacket.millisecondsSinceEpoch == 0;
+
+  factory TiltView.remembered({
+    required String uuid,
+    required String color,
+    String name = '',
+  }) {
+    return TiltView(
+      uuid: uuid,
+      color: color,
+      name: name,
+      rawSg: 0,
+      rawTempF: 0,
+      calSg: 0,
+      calTempF: 0,
+      isPro: true,
+      lastPacket: DateTime.fromMillisecondsSinceEpoch(0),
+    );
+  }
+
   TiltView copyWith({
     String? name,
     double? rawSg,

@@ -86,12 +86,16 @@ class PrefsStore {
 
   Future<Map<String, dynamic>> _readAll() async {
     if (!await file.exists()) return {};
-    final text = await file.readAsString();
-    if (text.trim().isEmpty) return {};
-    final decoded = jsonDecode(text);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return {};
+    try {
+      final text = await file.readAsString();
+      if (text.trim().isEmpty) return {};
+      final decoded = jsonDecode(text);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {};
+    } catch (_) {
+      return {};
+    }
   }
 
   Future<TiltPrefs> load(String uuid) async {
@@ -105,6 +109,29 @@ class PrefsStore {
   Future<void> save(String uuid, TiltPrefs prefs) async {
     final all = await _readAll();
     all[uuid] = prefs.toJson();
+    await file.parent.create(recursive: true);
+    await file.writeAsString(const JsonEncoder.withIndent('  ').convert(all));
+  }
+
+  Future<List<String>> loggingUuids() async {
+    final all = await _readAll();
+    final out = <String>[];
+    for (final entry in all.entries) {
+      Map<String, dynamic>? raw;
+      if (entry.value is Map<String, dynamic>) {
+        raw = entry.value as Map<String, dynamic>;
+      } else if (entry.value is Map) {
+        raw = Map<String, dynamic>.from(entry.value as Map);
+      }
+      if (raw == null) continue;
+      if (TiltPrefs.fromJson(raw).logging) out.add(entry.key);
+    }
+    return out;
+  }
+
+  Future<void> remove(String uuid) async {
+    final all = await _readAll();
+    all.remove(uuid);
     await file.parent.create(recursive: true);
     await file.writeAsString(const JsonEncoder.withIndent('  ').convert(all));
   }

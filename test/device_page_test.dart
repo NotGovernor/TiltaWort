@@ -20,6 +20,29 @@ const _pink = TiltAdvertisement(
   isPro: true,
 );
 
+class _MemoryPrefs extends PrefsStore {
+  _MemoryPrefs() : super(File('memory-device-prefs.json'));
+
+  final _data = <String, TiltPrefs>{};
+
+  @override
+  Future<TiltPrefs> load(String uuid) async => _data[uuid] ?? TiltPrefs.defaults;
+
+  @override
+  Future<void> save(String uuid, TiltPrefs prefs) async {
+    _data[uuid] = prefs;
+  }
+
+  @override
+  Future<List<String>> loggingUuids() async =>
+      [for (final e in _data.entries) if (e.value.logging) e.key];
+
+  @override
+  Future<void> remove(String uuid) async {
+    _data.remove(uuid);
+  }
+}
+
 Future<void> _pumpDevice(
   WidgetTester tester, {
   required TiltScanner scanner,
@@ -189,6 +212,7 @@ void main() {
     expect(find.text('Start recording'), findsOneWidget);
     expect(find.text('Stop recording'), findsOneWidget);
     expect(find.text('Snapshot'), findsOneWidget);
+    expect(find.text('Forget this Tilt'), findsOneWidget);
     expect(find.text('Not recording'), findsOneWidget);
     expect(find.text('Off'), findsNothing);
     expect(find.text('On'), findsNothing);
@@ -293,5 +317,31 @@ void main() {
       find.text('Need numbers in both Uncal SG and Actual SG.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('Forget this Tilt removes prefs', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    const uuid = FakeTiltScanner.pinkUuid;
+    final mem = _MemoryPrefs();
+    await mem.save(uuid, const TiltPrefs(name: 'House Pale', logging: true));
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: mem,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.tap(find.text('Forget this Tilt'));
+    await tester.pump();
+    final loaded = await mem.load(uuid);
+    expect(loaded.name, '');
+    expect(loaded.logging, isFalse);
   });
 }

@@ -182,4 +182,46 @@ void main() {
     expect(lines[1], contains(sgToPlato(1.040).toStringAsFixed(2)));
     expect(lines[1], contains(',F,'));
   });
+
+  test('resumeLatest reopens the latest CSV and appends without rewriting the header', () async {
+    final store = CsvLogStore(dir);
+    final t0 = DateTime.utc(2026, 10, 25, 12);
+    final file = await store.startLog(color: 'Pink', beer: 'Pale', at: t0);
+    await store.append(
+      timestamp: t0,
+      sg: 1.040,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+    );
+    await store.endLog('Pink');
+    expect(store.isOpenFor('Pink'), isFalse);
+
+    final resumed = await store.resumeLatest('Pink');
+    expect(resumed!.path, file.path);
+    expect(store.isOpenFor('Pink'), isTrue);
+    await store.append(
+      timestamp: t0.add(const Duration(minutes: 5)),
+      sg: 1.038,
+      temp: 67,
+      color: 'Pink',
+      beer: 'Pale',
+    );
+    final lines = (await file.readAsString()).trim().split(RegExp(r'\r?\n'));
+    expect(lines.first, CsvLogStore.header);
+    expect(lines.where((l) => l == CsvLogStore.header), hasLength(1));
+    expect(lines, hasLength(3));
+    expect(lines.last, contains('1.038'));
+  });
+
+  test('samplesFromCsv loads SG temp and skips header', () {
+    const text = 'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment\n'
+        '2026-10-25T12:00:00.000Z,0.000000,1.04,10.00,68.0,F,Pink,Pale,\n'
+        '2026-10-25T12:05:00.000Z,0.003472,1.038,9.52,67.0,F,Pink,Pale,\n';
+    final samples = samplesFromCsv(text);
+    expect(samples, hasLength(2));
+    expect(samples.first.sg, closeTo(1.04, 1e-9));
+    expect(samples.first.tempF, closeTo(68, 1e-9));
+    expect(samples.last.sg, closeTo(1.038, 1e-9));
+  });
 }

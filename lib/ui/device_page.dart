@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
 import 'package:tiltawort/tilt/history.dart';
+import 'package:tiltawort/tilt/log_runner.dart';
 import 'package:tiltawort/tilt/models.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
@@ -22,6 +23,7 @@ class DevicePage extends StatefulWidget {
     required this.prefs,
     required this.history,
     required this.logs,
+    this.runner,
     this.now,
   });
 
@@ -30,6 +32,7 @@ class DevicePage extends StatefulWidget {
   final PrefsStore prefs;
   final SessionHistory history;
   final CsvLogStore logs;
+  final LogRunner? runner;
   final DateTime Function()? now;
 
   @override
@@ -49,6 +52,8 @@ class _DevicePageState extends State<DevicePage> {
   List<File> _files = [];
   String? _calError;
   Duration _chartPan = Duration.zero;
+  late final LogRunner _runner;
+  var _ownsRunner = false;
 
   DateTime _now() => widget.now?.call() ?? DateTime.now();
 
@@ -65,6 +70,18 @@ class _DevicePageState extends State<DevicePage> {
     _nameFocus.addListener(() {
       if (!_nameFocus.hasFocus) _commitName();
     });
+    if (widget.runner != null) {
+      _runner = widget.runner!;
+    } else {
+      _runner = LogRunner(
+        scanner: widget.scanner,
+        logs: widget.logs,
+        prefs: widget.prefs,
+        history: widget.history,
+      );
+      _ownsRunner = true;
+    }
+    _runner.attach();
     _ads = widget.scanner.advertisements.listen(_onAd);
     widget.scanner.start();
     _tick = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -89,6 +106,16 @@ class _DevicePageState extends State<DevicePage> {
       );
     });
     await _refreshFiles();
+    if (next.logging && !widget.logs.isOpenFor(_view.color)) {
+      await widget.logs.resumeLatest(_view.color);
+    }
+    final active = widget.logs.activeFor(_view.color);
+    if (active != null && await active.exists()) {
+      for (final sample in samplesFromCsv(await active.readAsString())) {
+        widget.history.add(_view.uuid, sample);
+      }
+      if (mounted) setState(() {});
+    }
   }
 
   Future<void> _refreshFiles() async {
@@ -106,6 +133,7 @@ class _DevicePageState extends State<DevicePage> {
       );
     });
     await widget.prefs.save(_view.uuid, next);
+    _runner.updatePrefs(_view.uuid, next);
   }
 
   void _onAd(TiltAdvertisementEvent event) {
@@ -119,20 +147,6 @@ class _DevicePageState extends State<DevicePage> {
       view.uuid,
       SessionSample(at: view.lastPacket, sg: view.calSg, tempF: view.calTempF),
     );
-    if (widget.logs.isOpen) {
-      final temp = _prefs.tempUnit == 'C' ? fToC(view.calTempF) : view.calTempF;
-      widget.logs.append(
-        timestamp: view.lastPacket,
-        sg: view.calSg,
-        temp: temp,
-        color: view.color,
-        beer: _prefs.name,
-        comment: '',
-        force: false,
-        intervalSeconds: _prefs.logIntervalSeconds,
-        tempUnit: _prefs.tempUnit,
-      );
-    }
     if (mounted) setState(() => _view = view);
   }
 
@@ -145,6 +159,7 @@ class _DevicePageState extends State<DevicePage> {
     _uncal.dispose();
     _actual.dispose();
     _comment.dispose();
+    if (_ownsRunner) unawaited(_runner.detach());
     super.dispose();
   }
 
@@ -152,25 +167,30 @@ class _DevicePageState extends State<DevicePage> {
   Widget build(BuildContext context) {
     final p = TiltPalette.of(context);
     final now = _now();
-    final live = _view.isLiveAt(now);
+    final live = !_view.neverHeard && _view.isLiveAt(now);
     final beer = _prefs.name.trim().isEmpty ? 'Untitled' : _prefs.name.trim();
     final samples = widget.history.of(_view.uuid);
     final gUnit = _prefs.gravityUnit == 'P' ? '°P' : 'SG';
     final tUnit = _prefs.tempUnit == 'C' ? '°C' : '°F';
-    final gNum = formatGravity(
-      _view.calSg,
-      isPro: _view.isPro,
-      unit: _prefs.gravityUnit,
-    );
-    final tNum = _prefs.tempUnit == 'C'
-        ? (_view.isPro
-            ? fToC(_view.calTempF).toStringAsFixed(1)
-            : '${fToC(_view.calTempF).round()}')
-        : (_view.isPro
-            ? _view.calTempF.toStringAsFixed(1)
-            : '${_view.calTempF.round()}');
-    final uncalCaption =
-        'Uncalibrated ${formatSg(_view.rawSg, isPro: _view.isPro)} · ${formatTempF(_view.rawTempF, isPro: _view.isPro)}';
+    final gNum = _view.neverHeard
+        ? '—'
+        : formatGravity(
+            _view.calSg,
+            isPro: _view.isPro,
+            unit: _prefs.gravityUnit,
+          );
+    final tNum = _view.neverHeard
+        ? '—'
+        : (_prefs.tempUnit == 'C'
+            ? (_view.isPro
+                ? fToC(_view.calTempF).toStringAsFixed(1)
+                : '${fToC(_view.calTempF).round()}')
+            : (_view.isPro
+                ? _view.calTempF.toStringAsFixed(1)
+                : '${_view.calTempF.round()}'));
+    final uncalCaption = _view.neverHeard
+        ? '—'
+        : 'Uncalibrated ${formatSg(_view.rawSg, isPro: _view.isPro)} · ${formatTempF(_view.rawTempF, isPro: _view.isPro)}';
 
     return Scaffold(
       body: Stack(
@@ -382,9 +402,13 @@ class _DevicePageState extends State<DevicePage> {
                           recordingStatusLine(
                             isOpen: recordingUi(
                               prefsLogging: _prefs.logging,
-                              fileOpen: widget.logs.isOpen,
+                              fileOpen: widget.logs.isOpenFor(_view.color),
                             ),
-                            fileName: widget.logs.active?.uri.pathSegments.last,
+                            fileName: widget.logs
+                                .activeFor(_view.color)
+                                ?.uri
+                                .pathSegments
+                                .last,
                             intervalSeconds: _prefs.logIntervalSeconds,
                           ),
                           style: soraBody.copyWith(color: p.ink),
@@ -595,7 +619,7 @@ class _DevicePageState extends State<DevicePage> {
                                 TextButton(
                                   onPressed: () async {
                                     await widget.logs.deleteFile(f);
-                                    if (!widget.logs.isOpen) {
+                                    if (!widget.logs.isOpenFor(_view.color)) {
                                       await _setPrefs(_prefs.copyWith(logging: false));
                                     }
                                     await _refreshFiles();
@@ -608,6 +632,8 @@ class _DevicePageState extends State<DevicePage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  _btn(p, 'Forget this Tilt', _forget, kind: MetalButtonKind.steel),
                 ],
                 ),
               ),
@@ -833,35 +859,50 @@ class _DevicePageState extends State<DevicePage> {
       await _promptName();
       if (_prefs.name.trim().isEmpty) return;
     }
-    await widget.logs.startLog(color: _view.color, beer: _prefs.name, at: _now());
+    await _runner.startRecording(
+      uuid: _view.uuid,
+      color: _view.color,
+      beer: _prefs.name,
+      at: _now(),
+    );
     await _setPrefs(_prefs.copyWith(logging: true));
     await _refreshFiles();
   }
 
   Future<void> _endLog() async {
-    await widget.logs.endLog();
+    await _runner.stopRecording(uuid: _view.uuid, color: _view.color);
     await _setPrefs(_prefs.copyWith(logging: false));
   }
 
   Future<void> _logOnce() async {
-    if (!widget.logs.isOpen) {
+    if (!widget.logs.isOpenFor(_view.color)) {
       await _startLog();
-      if (!widget.logs.isOpen) return;
+      if (!widget.logs.isOpenFor(_view.color)) return;
     }
     final temp = _prefs.tempUnit == 'C' ? fToC(_view.calTempF) : _view.calTempF;
-    await widget.logs.append(
-      timestamp: _now(),
-      sg: _view.calSg,
-      temp: temp,
+    await _runner.snapshot(
+      uuid: _view.uuid,
       color: _view.color,
       beer: _prefs.name,
+      sg: _view.calSg,
+      tempF: temp,
+      at: _now(),
       comment: _comment.text,
-      force: true,
-      intervalSeconds: _prefs.logIntervalSeconds,
       tempUnit: _prefs.tempUnit,
     );
     _comment.clear();
     await _refreshFiles();
+  }
+
+  Future<void> _forget() async {
+    if (widget.logs.isOpenFor(_view.color)) {
+      await _runner.stopRecording(uuid: _view.uuid, color: _view.color);
+    }
+    await widget.prefs.remove(_view.uuid);
+    _runner.forgetPrefs(_view.uuid);
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop('forgotten');
+    }
   }
 
   Future<void> _promptName() async {

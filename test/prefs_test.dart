@@ -57,4 +57,30 @@ void main() {
     final loaded = await PrefsStore(file).load(uuid);
     expect(loaded.logIntervalSeconds, 900);
   });
+
+  test('corrupt json returns defaults instead of hiding live Tilts', () async {
+    await file.writeAsString('{ "oops": true }\n}');
+    final loaded = await PrefsStore(file).load('A495BB80-C5B1-4B44-B512-1370F02D74DE');
+    expect(loaded.name, '');
+    expect(loaded.cal, isEmpty);
+  });
+
+  test('loggingUuids lists only logging true keys', () async {
+    final store = PrefsStore(file);
+    await store.save('A495BB80-C5B1-4B44-B512-1370F02D74DE', const TiltPrefs(logging: true, name: 'Pale'));
+    await store.save('A495BB30-C5B1-4B44-B512-1370F02D74DE', const TiltPrefs(logging: false, name: 'Stout'));
+    final uuids = await store.loggingUuids();
+    expect(uuids, ['A495BB80-C5B1-4B44-B512-1370F02D74DE']);
+  });
+
+  test('remove drops the uuid so next ad is fresh', () async {
+    final store = PrefsStore(file);
+    const uuid = 'A495BB80-C5B1-4B44-B512-1370F02D74DE';
+    await store.save(uuid, const TiltPrefs(name: 'House Pale', logging: true));
+    await store.remove(uuid);
+    expect(await store.loggingUuids(), isEmpty);
+    final loaded = await store.load(uuid);
+    expect(loaded.name, '');
+    expect(loaded.logging, isFalse);
+  });
 }

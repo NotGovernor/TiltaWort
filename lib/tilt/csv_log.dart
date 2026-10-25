@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/units.dart';
 
 /// Recording UI is the open file, not the leftover prefs.logging flag.
@@ -38,6 +39,23 @@ String recordingStatusLine({
   if (!isOpen) return 'Not recording';
   final name = (fileName == null || fileName.isEmpty) ? 'log.csv' : fileName;
   return 'Recording · $name · ${intervalStatus(intervalSeconds)}';
+}
+
+List<SessionSample> samplesFromCsv(String text) {
+  final out = <SessionSample>[];
+  for (final line in text.split(RegExp(r'\r?\n')).skip(1)) {
+    if (line.trim().isEmpty) continue;
+    final cols = line.split(',');
+    if (cols.length < 5) continue;
+    final at = DateTime.tryParse(cols[0]);
+    final sg = double.tryParse(cols[2]);
+    final temp = double.tryParse(cols[4]);
+    if (at == null || sg == null || temp == null) continue;
+    final unit = cols.length > 5 ? cols[5] : 'F';
+    final tempF = unit == 'C' ? temp * 9 / 5 + 32 : temp;
+    out.add(SessionSample(at: at, sg: sg, tempF: tempF));
+  }
+  return out;
 }
 
 class _ActiveLog {
@@ -154,6 +172,30 @@ class CsvLogStore {
       await endLog(color);
     }
     if (await file.exists()) await file.delete();
+  }
+
+  Future<File?> resumeLatest(String color) async {
+    final files = await listForColor(color);
+    if (files.isEmpty) return null;
+    final file = files.first;
+    DateTime? start;
+    DateTime? last;
+    if (await file.exists()) {
+      final lines = (await file.readAsString()).split(RegExp(r'\r?\n'));
+      for (final line in lines.skip(1)) {
+        if (line.trim().isEmpty) continue;
+        final ts = DateTime.tryParse(line.split(',').first);
+        if (ts == null) continue;
+        start ??= ts;
+        last = ts;
+      }
+    }
+    _active[color] = _ActiveLog(
+      file: file,
+      logStart: start ?? DateTime.now(),
+      lastWrite: last,
+    );
+    return file;
   }
 
   Future<void> revealFile(File file) async {

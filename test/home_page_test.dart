@@ -43,6 +43,15 @@ class _MemoryPrefs extends PrefsStore {
   Future<void> save(String uuid, TiltPrefs prefs) async {
     _data[uuid] = prefs;
   }
+
+  @override
+  Future<List<String>> loggingUuids() async =>
+      [for (final e in _data.entries) if (e.value.logging) e.key];
+
+  @override
+  Future<void> remove(String uuid) async {
+    _data.remove(uuid);
+  }
 }
 
 Future<void> _pumpHome(
@@ -270,8 +279,27 @@ void main() {
         )
         .toList();
     expect(plates, isNotEmpty);
-    expect(plates.first.fill, TiltPalette.light.surface);
+    expect(plates.first.fill, TiltPalette.light.livePlate);
     expect(plates.first.fill, isNot(TiltColors.surface));
     expect(find.textContaining('Connected'), findsNothing);
+  });
+
+  testWidgets('startup logging uuid is Stale with em dash until heard', (tester) async {
+    final prefs = _MemoryPrefs();
+    await prefs.save(
+      FakeTiltScanner.pinkUuid,
+      const TiltPrefs(logging: true, name: 'House Pale'),
+    );
+    await _pumpHome(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      prefs: prefs,
+      seed: const [],
+    );
+    await tester.pump();
+    expect(find.text('House Pale'), findsOneWidget);
+    expect(find.text('—'), findsWidgets);
+    expect(find.text('Stale'), findsOneWidget);
+    expect(find.text('1.0000'), findsNothing);
   });
 }
