@@ -245,7 +245,7 @@ class _DevicePageState extends State<DevicePage> {
                           StatusChip(live: live),
                           const SizedBox(height: 4),
                           Text(
-                            relativeAgo(_view.lastPacket, now),
+                            lastHeardLabel(_view.lastPacket, now),
                             style: soraMuted.copyWith(color: p.muted, fontSize: 12),
                           ),
                           Text(
@@ -315,10 +315,11 @@ class _DevicePageState extends State<DevicePage> {
                           uncalCaption,
                           style: soraMuted.copyWith(color: p.muted, fontSize: 12),
                         ),
-                        Text(
-                          localStamp(_view.lastPacket),
-                          style: soraMuted.copyWith(color: p.muted, fontSize: 11),
-                        ),
+                        if (!isEpoch(_view.lastPacket))
+                          Text(
+                            localStamp(_view.lastPacket),
+                            style: soraMuted.copyWith(color: p.muted, fontSize: 11),
+                          ),
                       ],
                     ),
                   ),

@@ -301,5 +301,9 @@ void main() {
     expect(find.text('—'), findsWidgets);
     expect(find.text('Stale'), findsOneWidget);
     expect(find.text('1.0000'), findsNothing);
+    final text = _allText(tester);
+    expect(text.contains('d ago'), isFalse);
+    expect(text.contains('1969'), isFalse);
+    expect(text.contains('1970'), isFalse);
   });
 }

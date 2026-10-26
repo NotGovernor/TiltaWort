@@ -492,9 +492,7 @@ class TiltTile extends StatelessWidget {
                 Align(
                   alignment: Alignment.centerRight,
                   child: Text(
-                    relativeAgo(view.lastPacket, now).isEmpty || view.neverHeard
-                        ? ''
-                        : relativeAgo(view.lastPacket, now),
+                    lastHeardLabel(view.lastPacket, now),
                     style: soraMuted.copyWith(color: muted, fontSize: 12),
                   ),
                 ),
