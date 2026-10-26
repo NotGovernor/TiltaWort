@@ -28,14 +28,15 @@ class TiltView {
   final DateTime lastPacket;
 
   bool isLiveAt(DateTime now) =>
-      now.difference(lastPacket) <= const Duration(seconds: 30);
+      !neverHeard && now.difference(lastPacket) <= const Duration(seconds: 30);
 
-  bool get neverHeard => lastPacket.millisecondsSinceEpoch == 0;
+  bool get neverHeard => rawSg == 0 && rawTempF == 0;
 
   factory TiltView.remembered({
     required String uuid,
     required String color,
     String name = '',
+    DateTime? lastPacket,
   }) {
     return TiltView(
       uuid: uuid,
@@ -46,7 +47,7 @@ class TiltView {
       calSg: 0,
       calTempF: 0,
       isPro: true,
-      lastPacket: DateTime.fromMillisecondsSinceEpoch(0),
+      lastPacket: lastPacket ?? DateTime.fromMillisecondsSinceEpoch(0),
     );
   }
 

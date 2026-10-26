@@ -224,4 +224,42 @@ void main() {
     expect(samples.first.tempF, closeTo(68, 1e-9));
     expect(samples.last.sg, closeTo(1.038, 1e-9));
   });
+
+  test('lastSampleFromCsv is last row Timestamp, null when empty', () {
+    const text = 'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment\n'
+        '2026-10-25T12:00:00.000Z,0.000000,1.04,10.00,68.0,F,Pink,Pale,\n'
+        '2026-10-25T15:00:00.000Z,0.125000,1.038,9.52,67.0,F,Pink,Pale,\n';
+    expect(lastSampleFromCsv(text)!.at, DateTime.parse('2026-10-25T15:00:00.000Z'));
+    expect(
+      lastSampleFromCsv(
+        'Timestamp,Timepoint,SG,Plato,Temp,TempUnit,Color,Beer,Comment\n',
+      ),
+      isNull,
+    );
+  });
+
+  test('lastHeardForColor is last row Timestamp, epoch when none', () async {
+    final dir = await Directory.systemTemp.createTemp('tiltawort-lastheard-');
+    addTearDown(() async {
+      if (await dir.exists()) await dir.delete(recursive: true);
+    });
+    final store = CsvLogStore(dir);
+    expect(
+      await store.lastHeardForColor('Pink'),
+      DateTime.fromMillisecondsSinceEpoch(0),
+    );
+    final heard = DateTime.utc(2026, 10, 25, 16);
+    await store.startLog(color: 'Pink', beer: 'Pale', at: heard);
+    await store.append(
+      timestamp: heard,
+      sg: 1.040,
+      temp: 68,
+      color: 'Pink',
+      beer: 'Pale',
+    );
+    await store.endLog('Pink');
+    expect(await store.lastHeardForColor('Pink'), heard);
+    final now = heard.add(const Duration(hours: 3));
+    expect(lastHeardLabel(await store.lastHeardForColor('Pink'), now), '3 h ago');
+  });
 }

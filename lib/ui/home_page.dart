@@ -110,10 +110,14 @@ class _HomePageState extends State<HomePage> {
       if (color == null) continue;
       final loaded = await _prefsStore.load(uuid);
       _prefsCache[uuid] = loaded;
+      final last = widget.logs == null
+          ? DateTime.fromMillisecondsSinceEpoch(0)
+          : await _logs.lastHeardForColor(color);
       _tiles[uuid] = TiltView.remembered(
         uuid: uuid,
         color: color,
         name: _nameFor(uuid, loaded, ''),
+        lastPacket: last,
       );
       added = true;
     }

@@ -58,6 +58,11 @@ List<SessionSample> samplesFromCsv(String text) {
   return out;
 }
 
+SessionSample? lastSampleFromCsv(String text) {
+  final samples = samplesFromCsv(text);
+  return samples.isEmpty ? null : samples.last;
+}
+
 class _ActiveLog {
   _ActiveLog({required this.file, required this.logStart, this.lastWrite});
 
@@ -181,7 +186,7 @@ class CsvLogStore {
   }
 
   Future<List<File>> listForColor(String color) async {
-    if (!await directory.exists()) return const [];
+    if (!directory.existsSync()) return const [];
     final needle = '($color TILT)';
     final files = directory
         .listSync()
@@ -190,6 +195,13 @@ class CsvLogStore {
         .toList()
       ..sort((a, b) => b.path.compareTo(a.path));
     return files;
+  }
+
+  Future<DateTime> lastHeardForColor(String color) async {
+    final files = await listForColor(color);
+    if (files.isEmpty) return DateTime.fromMillisecondsSinceEpoch(0);
+    final sample = lastSampleFromCsv(await files.first.readAsString());
+    return sample?.at ?? DateTime.fromMillisecondsSinceEpoch(0);
   }
 
   Future<void> deleteFile(File file) async {

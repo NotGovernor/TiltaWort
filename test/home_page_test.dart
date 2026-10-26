@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tiltawort/app.dart';
 import 'package:tiltawort/tilt/calibrate.dart';
+import 'package:tiltawort/tilt/csv_log.dart';
 import 'package:tiltawort/tilt/decode.dart';
 import 'package:tiltawort/tilt/fake_scanner.dart';
 import 'package:tiltawort/tilt/models.dart';
@@ -54,6 +55,21 @@ class _MemoryPrefs extends PrefsStore {
   }
 }
 
+class _MemoryLogs extends CsvLogStore {
+  _MemoryLogs() : super(Directory('memory-logs'));
+
+  DateTime heard = DateTime.fromMillisecondsSinceEpoch(0);
+
+  @override
+  Future<DateTime> lastHeardForColor(String color) async => heard;
+
+  @override
+  Future<List<File>> listForColor(String color) async => const [];
+
+  @override
+  Future<File?> resumeLatest(String color) async => null;
+}
+
 Future<void> _pumpHome(
   WidgetTester tester, {
   required TiltScanner scanner,
@@ -61,6 +77,7 @@ Future<void> _pumpHome(
   DateTime Function()? now,
   Map<String, String> names = const {},
   PrefsStore? prefs,
+  CsvLogStore? logs,
   ThemeData? theme,
   ThemeMode themeMode = ThemeMode.dark,
 }) async {
@@ -75,6 +92,7 @@ Future<void> _pumpHome(
         now: now,
         names: names,
         prefs: prefs,
+        logs: logs,
       ),
     ),
   );
@@ -303,6 +321,37 @@ void main() {
     expect(find.text('1.0000'), findsNothing);
     final text = _allText(tester);
     expect(text.contains('d ago'), isFalse);
+    expect(text.contains('1969'), isFalse);
+    expect(text.contains('1970'), isFalse);
+  });
+
+  testWidgets('remembered tile uses last CSV time, not 20000 d; SG stays dash',
+      (tester) async {
+    final now = DateTime.utc(2026, 10, 25, 19);
+    final heard = now.subtract(const Duration(hours: 3));
+    final prefs = _MemoryPrefs();
+    await prefs.save(
+      FakeTiltScanner.pinkUuid,
+      const TiltPrefs(logging: true, name: 'House Pale'),
+    );
+    final logs = _MemoryLogs()..heard = heard;
+    await _pumpHome(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      prefs: prefs,
+      logs: logs,
+      now: () => now,
+    );
+    await tester.pump();
+
+    expect(find.text('3 h ago'), findsOneWidget);
+    expect(find.text('—'), findsWidgets);
+    expect(find.text('Stale'), findsOneWidget);
+    expect(find.text('1.040'), findsNothing);
+    expect(find.text('0.0000'), findsNothing);
+    expect(find.text('1.0000'), findsNothing);
+    final text = _allText(tester);
+    expect(text.contains('20000'), isFalse);
     expect(text.contains('1969'), isFalse);
     expect(text.contains('1970'), isFalse);
   });
