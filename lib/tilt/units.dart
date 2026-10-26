@@ -36,6 +36,13 @@ String relativeAgo(DateTime at, DateTime now) {
   return '${d.inDays} d ago';
 }
 
+bool isEpoch(DateTime at) => at.millisecondsSinceEpoch == 0;
+
+String lastHeardLabel(DateTime at, DateTime now) {
+  if (isEpoch(at)) return '';
+  return relativeAgo(at, now);
+}
+
 String localStamp(DateTime at) {
   final l = at.toLocal();
   String two(int n) => n.toString().padLeft(2, '0');

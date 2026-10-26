@@ -16,4 +16,20 @@ void main() {
     expect(formatSg(1.016, isPro: false), '1.016');
     expect(formatSg(1.0000, isPro: true), '1.0000');
   });
+
+  test('epoch last-heard is blank, never 20000 d ago', () {
+    final now = DateTime.utc(2026, 10, 25, 19);
+    final epoch = DateTime.fromMillisecondsSinceEpoch(0);
+    expect(isEpoch(epoch), isTrue);
+    expect(lastHeardLabel(epoch, now), '');
+    expect(relativeAgo(epoch, now), isNot(''));
+    expect(lastHeardLabel(epoch, now).contains('d ago'), isFalse);
+  });
+
+  test('12 min ago last-heard is 12 min ago', () {
+    final now = DateTime.utc(2026, 10, 25, 19);
+    final at = now.subtract(const Duration(minutes: 12));
+    expect(isEpoch(at), isFalse);
+    expect(lastHeardLabel(at, now), '12 min ago');
+  });
 }
