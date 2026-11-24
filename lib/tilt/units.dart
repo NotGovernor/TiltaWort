@@ -38,8 +38,12 @@ String relativeAgo(DateTime at, DateTime now) {
 
 bool isEpoch(DateTime at) => at.millisecondsSinceEpoch == 0;
 
+bool isNonsenseHeard(DateTime at) =>
+    at.millisecondsSinceEpoch.abs() < 1000 ||
+    at.year < 2015; // Tilts did not exist
+
 String lastHeardLabel(DateTime at, DateTime now) {
-  if (isEpoch(at)) return '';
+  if (isNonsenseHeard(at)) return '';
   return relativeAgo(at, now);
 }
 

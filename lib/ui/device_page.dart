@@ -333,7 +333,7 @@ class _DevicePageState extends State<DevicePage> {
                           uncalCaption,
                           style: soraMuted.copyWith(color: p.muted, fontSize: 12),
                         ),
-                        if (!isEpoch(_view.lastPacket))
+                        if (!isNonsenseHeard(_view.lastPacket))
                           Text(
                             localStamp(_view.lastPacket),
                             style: soraMuted.copyWith(color: p.muted, fontSize: 11),

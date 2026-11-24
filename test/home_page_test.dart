@@ -358,4 +358,31 @@ void main() {
     expect(text.contains('1969'), isFalse);
     expect(text.contains('1970'), isFalse);
   });
+
+  testWidgets('local 1970 last CSV time is blank, not 20752 d ago', (tester) async {
+    final now = DateTime.utc(2026, 10, 25, 19);
+    final prefs = _MemoryPrefs();
+    await prefs.save(
+      FakeTiltScanner.pinkUuid,
+      const TiltPrefs(logging: true, name: 'House Pale'),
+    );
+    final logs = _MemoryLogs()..heard = DateTime(1970, 1, 1);
+    await _pumpHome(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      prefs: prefs,
+      logs: logs,
+      now: () => now,
+    );
+    await tester.pump();
+
+    expect(find.text('—'), findsWidgets);
+    expect(find.text('Stale'), findsOneWidget);
+    final text = _allText(tester);
+    expect(text.contains('d ago'), isFalse);
+    expect(text.contains('1969'), isFalse);
+    expect(text.contains('1970'), isFalse);
+    expect(text.contains('20752'), isFalse);
+    expect(text.contains('20000'), isFalse);
+  });
 }

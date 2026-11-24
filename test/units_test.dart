@@ -21,15 +21,25 @@ void main() {
     final now = DateTime.utc(2026, 10, 25, 19);
     final epoch = DateTime.fromMillisecondsSinceEpoch(0);
     expect(isEpoch(epoch), isTrue);
+    expect(isNonsenseHeard(epoch), isTrue);
     expect(lastHeardLabel(epoch, now), '');
     expect(relativeAgo(epoch, now), isNot(''));
     expect(lastHeardLabel(epoch, now).contains('d ago'), isFalse);
+  });
+
+  test('local DateTime(1970, 1, 1) last-heard is blank, not 20752 d ago', () {
+    final now = DateTime.utc(2026, 10, 25, 19);
+    final localEpoch = DateTime(1970, 1, 1);
+    expect(isNonsenseHeard(localEpoch), isTrue);
+    expect(lastHeardLabel(localEpoch, now), '');
+    expect(lastHeardLabel(localEpoch, now).contains('d ago'), isFalse);
   });
 
   test('12 min ago last-heard is 12 min ago', () {
     final now = DateTime.utc(2026, 10, 25, 19);
     final at = now.subtract(const Duration(minutes: 12));
     expect(isEpoch(at), isFalse);
+    expect(isNonsenseHeard(at), isFalse);
     expect(lastHeardLabel(at, now), '12 min ago');
   });
 }

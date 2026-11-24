@@ -415,4 +415,31 @@ void main() {
     expect(text.contains('1970'), isFalse);
     expect(text.contains('20000'), isFalse);
   });
+
+  testWidgets('local 1970 lastPacket is blank, not 20752 d ago', (tester) async {
+    final t0 = DateTime.utc(2026, 10, 25, 19);
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: TiltView.remembered(
+        uuid: FakeTiltScanner.pinkUuid,
+        color: 'Pink',
+        name: 'House Pale',
+        lastPacket: DateTime(1970, 1, 1),
+      ),
+      prefs: prefs,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+
+    expect(find.text('Stale'), findsOneWidget);
+    expect(find.text('—'), findsWidgets);
+    final text = _allText(tester);
+    expect(text.contains('d ago'), isFalse);
+    expect(text.contains('1969'), isFalse);
+    expect(text.contains('1970'), isFalse);
+    expect(text.contains('20752'), isFalse);
+    expect(text.contains('20000'), isFalse);
+  });
 }
