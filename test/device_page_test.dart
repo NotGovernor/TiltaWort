@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -40,6 +41,16 @@ class _MemoryPrefs extends PrefsStore {
   @override
   Future<void> remove(String uuid) async {
     _data.remove(uuid);
+  }
+}
+
+class _SlowEmptyPrefs extends _MemoryPrefs {
+  final gate = Completer<void>();
+
+  @override
+  Future<TiltPrefs> load(String uuid) async {
+    await gate.future;
+    return super.load(uuid);
   }
 }
 
@@ -279,6 +290,55 @@ void main() {
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pump();
     expect(find.widgetWithText(TextField, 'Untitled'), findsOneWidget);
+  });
+
+  testWidgets('typing a beer name persists in PrefsStore', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    const uuid = FakeTiltScanner.pinkUuid;
+    final mem = _MemoryPrefs();
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: mem,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'House Pale'), 'Test Batch');
+    await tester.pump();
+    expect((await mem.load(uuid)).name, 'Test Batch');
+  });
+
+  testWidgets('async prefs load does not clobber a name already typed', (tester) async {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final t0 = DateTime.utc(2026, 10, 24, 21, 30);
+    const uuid = FakeTiltScanner.pinkUuid;
+    final mem = _SlowEmptyPrefs();
+    await _pumpDevice(
+      tester,
+      scanner: FakeTiltScanner(script: const []),
+      view: pinkView(t0),
+      prefs: mem,
+      history: SessionHistory(),
+      logs: logs,
+      now: () => t0,
+    );
+    await tester.enterText(find.widgetWithText(TextField, 'House Pale'), 'Keep Me');
+    await tester.pump();
+    mem.gate.complete();
+    await tester.pump();
+    expect((await mem.load(uuid)).name, 'Keep Me');
+    expect(find.widgetWithText(TextField, 'Keep Me'), findsOneWidget);
   });
 
   testWidgets('bad cal point shows an error', (tester) async {

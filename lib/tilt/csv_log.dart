@@ -186,14 +186,16 @@ class CsvLogStore {
   }
 
   Future<List<File>> listForColor(String color) async {
-    if (!directory.existsSync()) return const [];
+    if (!await directory.exists()) return const [];
     final needle = '($color TILT)';
-    final files = directory
-        .listSync()
-        .whereType<File>()
-        .where((f) => f.uri.pathSegments.last.contains(needle))
-        .toList()
-      ..sort((a, b) => b.path.compareTo(a.path));
+    final files = <File>[];
+    await for (final entity in directory.list()) {
+      if (entity is File &&
+          entity.uri.pathSegments.last.contains(needle)) {
+        files.add(entity);
+      }
+    }
+    files.sort((a, b) => b.path.compareTo(a.path));
     return files;
   }
 

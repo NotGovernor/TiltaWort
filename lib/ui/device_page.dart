@@ -68,7 +68,7 @@ class _DevicePageState extends State<DevicePage> {
     _comment = TextEditingController();
     _nameFocus = FocusNode();
     _nameFocus.addListener(() {
-      if (!_nameFocus.hasFocus) _commitName();
+      if (!_nameFocus.hasFocus) unawaited(_commitName());
     });
     if (widget.runner != null) {
       _runner = widget.runner!;
@@ -97,11 +97,22 @@ class _DevicePageState extends State<DevicePage> {
     if (next.name.isEmpty && widget.initial.name.isNotEmpty) {
       next = next.copyWith(name: widget.initial.name);
     }
+    final typed = _name.text.trim();
+    final userEdited =
+        typed.isNotEmpty && typed != widget.initial.name && typed != next.name;
+    if (userEdited) {
+      next = next.copyWith(name: typed);
+      await widget.prefs.save(_view.uuid, next);
+      _runner.updatePrefs(_view.uuid, next);
+    }
+    if (!mounted) return;
     setState(() {
       _prefs = next;
-      if (_name.text != next.name) _name.text = next.name;
+      if (!userEdited && !_nameFocus.hasFocus && _name.text != next.name) {
+        _name.text = next.name;
+      }
       _view = _view.copyWith(
-        name: next.name,
+        name: userEdited ? typed : next.name,
         calSg: applyCal(_view.rawSg, next.cal),
       );
     });
@@ -133,8 +144,15 @@ class _DevicePageState extends State<DevicePage> {
         calSg: applyCal(_view.rawSg, next.cal),
       );
     });
-    await widget.prefs.save(_view.uuid, next);
-    _runner.updatePrefs(_view.uuid, next);
+    try {
+      await widget.prefs.save(_view.uuid, next);
+      _runner.updatePrefs(_view.uuid, next);
+    } on FileSystemException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not save: ${e.message}')),
+      );
+    }
   }
 
   void _onAd(TiltAdvertisementEvent event) {
@@ -796,25 +814,33 @@ class _DevicePageState extends State<DevicePage> {
     setState(() => _chartPan = pan);
   }
 
-  void _commitName() {
+  Future<void> _commitName() async {
     final next = _name.text.trim().isEmpty ? 'Untitled' : _name.text.trim();
     if (_name.text != next) _name.text = next;
-    if (_prefs.name != next) _setPrefs(_prefs.copyWith(name: next));
+    if (_prefs.name != next) await _setPrefs(_prefs.copyWith(name: next));
   }
 
   Future<void> _startLog() async {
+    await _commitName();
     if (_prefs.name.trim().isEmpty) {
       await _promptName();
       if (_prefs.name.trim().isEmpty) return;
     }
-    await _runner.startRecording(
-      uuid: _view.uuid,
-      color: _view.color,
-      beer: _prefs.name,
-      at: _now(),
-    );
-    await _setPrefs(_prefs.copyWith(logging: true));
-    await _refreshFiles();
+    try {
+      await _runner.startRecording(
+        uuid: _view.uuid,
+        color: _view.color,
+        beer: _prefs.name,
+        at: _now(),
+      );
+      await _setPrefs(_prefs.copyWith(logging: true));
+      await _refreshFiles();
+    } on FileSystemException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not start recording: ${e.message}')),
+      );
+    }
   }
 
   Future<void> _endLog() async {
