@@ -123,7 +123,10 @@ void main() {
     );
     await _pumpHome(tester, scanner: scanner, now: () => t0);
 
-    expect(find.text('Tilt-a-Wort'), findsOneWidget);
+    expect(find.text('Tilt-a-Wort'), findsNothing);
+    expect(find.image(const AssetImage('assets/brand/wordmark-dark.png')), findsNothing);
+    expect(find.image(const AssetImage('assets/brand/wordmark-light.png')), findsNothing);
+    expect(find.byTooltip('App settings'), findsOneWidget);
     expect(find.text('Pink'), findsOneWidget);
     expect(find.text('1.0000'), findsOneWidget);
     expect(find.text('72.0 °F'), findsOneWidget);

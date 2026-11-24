@@ -302,12 +302,7 @@ class _Header extends StatelessWidget {
     final palette = TiltPalette.of(context);
     return Row(
       children: [
-        Expanded(
-          child: Text(
-            'Tilt-a-Wort',
-            style: soraTitle.copyWith(color: palette.primary),
-          ),
-        ),
+        const Spacer(),
         IconButton(
           tooltip: 'App settings',
           onPressed: onGear,
