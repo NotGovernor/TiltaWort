@@ -58,3 +58,7 @@ native/tilt_listen/target/
 
 # killed 10-24 look restart — never commit
 planning/mockups/restart/
+
+# rejected brand kits — local only, public tree is kit C
+planning/brand/a/
+planning/brand/b/
