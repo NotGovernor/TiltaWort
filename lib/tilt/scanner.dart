@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:tiltawort/tilt/decode.dart';
 
-/// Default false: the Windows window listens via the sidecar.
+/// Default false: the Windows window listens via in-process `tilt_listen` cdylib.
 /// Tests inject [FakeTiltScanner]. Force fake: `--dart-define=USE_FAKE_SCANNER=true`.
 const kUseFakeScanner = bool.fromEnvironment(
   'USE_FAKE_SCANNER',

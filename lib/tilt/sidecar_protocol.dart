@@ -26,7 +26,12 @@ class SidecarAdLine {
 Object? parseSidecarLine(String line) {
   final trimmed = line.trim();
   if (trimmed.isEmpty) return null;
-  final decoded = jsonDecode(trimmed);
+  final Object? decoded;
+  try {
+    decoded = jsonDecode(trimmed);
+  } catch (_) {
+    return null;
+  }
   if (decoded is! Map) return null;
   final map = Map<String, dynamic>.from(decoded);
   final type = map['type'] as String?;

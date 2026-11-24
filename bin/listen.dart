@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:tiltawort/tilt/windows_scanner.dart';
+import 'package:tiltawort/tilt/ffi_scanner.dart';
 
-/// Live Windows listen. Prints each decoded Tilt ad as it arrives.
+/// Live Windows listen via in-process cdylib. Prints each decoded Tilt ad.
 ///   flutter pub get
 ///   dart run bin/listen.dart
 Future<void> main(List<String> args) async {
@@ -13,15 +13,17 @@ Future<void> main(List<String> args) async {
       seconds = int.parse(args[i + 1]);
     }
   }
-  final exe = locateTiltListen();
-  if (exe == null) {
-    stderr.writeln('tilt_listen.exe not found. Build native/tilt_listen (--release).');
+  final lib = locateTiltListenLibrary();
+  if (lib == null) {
+    stderr.writeln(
+      'tilt_listen.dll not found. Build native/tilt_listen (--release).',
+    );
     exitCode = 2;
     return;
   }
-  stdout.writeln('sidecar: ${exe.path}');
+  stdout.writeln('library: ${lib.path}');
   stdout.writeln('listening ${seconds}s (empty filter, 0x004C only, no GATT)');
-  final scanner = WindowsBleScanner(sidecarPath: exe.path, seconds: seconds);
+  final scanner = FfiBleScanner(libraryPath: lib.path);
   var n = 0;
   final sub = scanner.advertisements.listen((e) {
     n++;

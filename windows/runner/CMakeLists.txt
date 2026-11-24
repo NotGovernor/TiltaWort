@@ -42,8 +42,11 @@ add_dependencies(${BINARY_NAME} flutter_assemble)
 # POST_BUILD must live with this target (CMake refuses parent-dir POST_BUILD).
 add_custom_command(
   TARGET ${BINARY_NAME} POST_BUILD
+  COMMAND cargo build --release --manifest-path "${TILTAWORT_ROOT}/native/tilt_listen/Cargo.toml"
   COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${TILT_LISTEN_SIDECAR}"
+    "${TILT_LISTEN_DLL}"
+    "$<TARGET_FILE_DIR:${BINARY_NAME}>/tilt_listen.dll"
+  COMMAND ${CMAKE_COMMAND} -E remove
     "$<TARGET_FILE_DIR:${BINARY_NAME}>/tilt_listen.exe"
-  COMMENT "Copy tilt_listen sidecar next to runner"
+  COMMENT "Build and copy tilt_listen.dll next to runner"
 )

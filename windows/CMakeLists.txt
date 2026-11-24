@@ -49,10 +49,10 @@ endfunction()
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
 
-# Listen-only BLE sidecar next to the runner so locateTiltListen()
-# finds tilt_listen.exe beside Platform.resolvedExecutable.
+# Listen-only BLE cdylib next to the runner so FfiBleScanner
+# finds tilt_listen.dll beside Platform.resolvedExecutable.
 get_filename_component(TILTAWORT_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/.." ABSOLUTE)
-set(TILT_LISTEN_SIDECAR "${TILTAWORT_ROOT}/native/tilt_listen/target/release/tilt_listen.exe")
+set(TILT_LISTEN_DLL "${TILTAWORT_ROOT}/native/tilt_listen/target/release/tilt_listen.dll")
 
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
@@ -80,7 +80,7 @@ set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 
-install(FILES "${TILT_LISTEN_SIDECAR}"
+install(FILES "${TILT_LISTEN_DLL}"
   DESTINATION "${CMAKE_INSTALL_PREFIX}"
   COMPONENT Runtime)
 

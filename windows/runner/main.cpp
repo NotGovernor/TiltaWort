@@ -5,6 +5,34 @@
 #include "flutter_window.h"
 #include "utils.h"
 
+namespace {
+HANDLE g_kill_on_close_job = nullptr;
+
+// Sidecar (tilt_listen.exe) is a child of this process. Windows does not
+// kill children when the parent dies, so Debug relaunches leaked listeners
+// that then contend the Intel adapter. A job with KILL_ON_JOB_CLOSE reaps
+// them when this window exits.
+void BindKillOnCloseJob() {
+  g_kill_on_close_job = CreateJobObjectW(nullptr, nullptr);
+  if (g_kill_on_close_job == nullptr) {
+    return;
+  }
+  JOBOBJECT_EXTENDED_LIMIT_INFORMATION info = {};
+  info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+  if (!SetInformationJobObject(g_kill_on_close_job,
+                               JobObjectExtendedLimitInformation, &info,
+                               sizeof(info))) {
+    CloseHandle(g_kill_on_close_job);
+    g_kill_on_close_job = nullptr;
+    return;
+  }
+  if (!AssignProcessToJobObject(g_kill_on_close_job, GetCurrentProcess())) {
+    CloseHandle(g_kill_on_close_job);
+    g_kill_on_close_job = nullptr;
+  }
+}
+}  // namespace
+
 int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
                       _In_ wchar_t *command_line, _In_ int show_command) {
   // Attach to console when present (e.g., 'flutter run') or create a
@@ -16,6 +44,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   // Initialize COM, so that it is available for use in the library and/or
   // plugins.
   ::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+  BindKillOnCloseJob();
 
   flutter::DartProject project(L"data");
 

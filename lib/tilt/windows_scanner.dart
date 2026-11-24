@@ -1,107 +1,47 @@
-import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:tiltawort/tilt/scanner.dart';
-import 'package:tiltawort/tilt/sidecar_protocol.dart';
-
-/// Windows listen-only scanner. Spawns the btleplug sidecar (empty ScanFilter,
-/// manufacturer 0x004C only). Never connects, never GATT.
-class WindowsBleScanner implements TiltScanner {
-  WindowsBleScanner({this.sidecarPath, this.seconds});
-
-  /// Absolute path to `tilt_listen.exe`. Null → search env / next-to-exe / repo.
-  final String? sidecarPath;
-
-  /// If set, sidecar exits after this many seconds (live proof). Null → until stop().
-  final int? seconds;
-
-  final _radio = StreamController<RadioState>.broadcast();
-  final _ads = StreamController<TiltAdvertisementEvent>.broadcast();
-  Process? _proc;
-  StreamSubscription<String>? _stdoutSub;
-  StreamSubscription<String>? _stderrSub;
-
-  @override
-  Stream<RadioState> get radio => _radio.stream;
-
-  @override
-  Stream<TiltAdvertisementEvent> get advertisements => _ads.stream;
-
-  @override
-  Future<void> start() async {
-    if (_proc != null) return;
-    final exe = sidecarPath ?? locateTiltListen()?.path;
-    if (exe == null) {
-      stderr.writeln('tilt_listen.exe not found (set TILTAWORT_LISTEN)');
-      _radio.add(RadioState.off);
-      return;
-    }
-    final args = <String>[];
-    if (seconds != null) args.addAll(['--seconds', '$seconds']);
-    _proc = await Process.start(exe, args, runInShell: false);
-    _stdoutSub = _proc!.stdout
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen(_onStdout);
-    _stderrSub = _proc!.stderr
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())
-        .listen((line) => stderr.writeln(line));
+/// SIGTERM/`Process.kill()` leaves WinRT listeners alive on this PC.
+/// SIGKILL + `taskkill /F /PID /T` actually reaps.
+Future<void> forceKillPid(int pid) async {
+  if (pid <= 0) return;
+  Process.killPid(pid, ProcessSignal.sigkill);
+  if (Platform.isWindows) {
+    await Process.run(
+      'taskkill',
+      ['/F', '/PID', '$pid', '/T'],
+      runInShell: false,
+    );
   }
-
-  void _onStdout(String line) {
-    final parsed = parseSidecarLine(line);
-    if (parsed is SidecarAdapterLine) {
-      _radio.add(parsed.isOn ? RadioState.on : RadioState.off);
-      return;
-    }
-    if (parsed is SidecarAdLine) {
-      final event = eventFromSidecarAd(parsed);
-      if (event == null) return;
-      final a = event.advertisement;
-      stdout.writeln(
-        '${a.color} ${a.isPro ? 'Pro' : 'Tilt'} '
-        'SG=${a.sg.toStringAsFixed(4)} ${a.tempF.toStringAsFixed(1)}°F '
-        'rssi=${event.rssiDbm ?? '?'} dBm',
-      );
-      _ads.add(event);
-    }
-  }
-
-  @override
-  Future<void> stop() async {
-    await _stdoutSub?.cancel();
-    await _stderrSub?.cancel();
-    _stdoutSub = null;
-    _stderrSub = null;
-    _proc?.kill();
-    try {
-      await _proc?.exitCode.timeout(const Duration(seconds: 2));
-    } catch (_) {}
-    _proc = null;
+  for (var i = 0; i < 20; i++) {
+    if (!await pidIsRunning(pid)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 100));
   }
 }
 
-File? locateTiltListen() {
-  final env = Platform.environment['TILTAWORT_LISTEN'];
-  if (env != null && env.isNotEmpty) {
-    final f = File(env);
-    if (f.existsSync()) return f;
+Future<bool> pidIsRunning(int pid) async {
+  if (pid <= 0) return false;
+  if (!Platform.isWindows) {
+    return Process.killPid(pid, ProcessSignal.sigusr1);
   }
-  final names = ['tilt_listen.exe', 'tilt_listen'];
-  final dirs = <String>[
-    File(Platform.resolvedExecutable).parent.path,
-    Directory.current.path,
-    '${Directory.current.path}${Platform.pathSeparator}native${Platform.pathSeparator}tilt_listen${Platform.pathSeparator}target${Platform.pathSeparator}release',
-  ];
-  for (final dir in dirs) {
-    for (final name in names) {
-      final f = File('$dir${Platform.pathSeparator}$name');
-      if (f.existsSync()) return f;
-    }
-  }
-  return null;
+  final result = await Process.run(
+    'tasklist',
+    ['/FI', 'PID eq $pid', '/FO', 'CSV', '/NH'],
+    runInShell: false,
+  );
+  final out = result.stdout.toString();
+  if (out.contains('No tasks are running')) return false;
+  return RegExp(',"$pid"|,"$pid",').hasMatch(out) ||
+      RegExp('"$pid"').hasMatch(out);
+}
+
+/// Kill leftover `tilt_listen.exe` so they cannot contend the Intel adapter.
+Future<void> killLeftoverTiltListenExe() async {
+  if (!Platform.isWindows) return;
+  await Process.run(
+    'taskkill',
+    ['/F', '/IM', 'tilt_listen.exe'],
+    runInShell: false,
+  );
 }
 
 /// Opens Windows Bluetooth settings. Does not toggle radio itself.
