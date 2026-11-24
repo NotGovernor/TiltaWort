@@ -23,6 +23,10 @@ void main() {
     expect((parsed as SidecarAdapterLine).isOn, isFalse);
   });
 
+  test('non-JSON sidecar line is ignored', () {
+    expect(parseSidecarLine('Pinging 127.0.0.1 with 32 bytes of data:'), isNull);
+  });
+
   test('non-Tilt 0x004C is dropped', () {
     const line = '{"type":"ad","companyId":76,"payload":[2,21,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"rssi":-40}';
     final ad = parseSidecarLine(line) as SidecarAdLine;

@@ -26,6 +26,12 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Tilt-a-Wort ranges nearby Tilt hydrometer iBeacons to read gravity and temperature. iOS requires location permission for iBeacon ranging. The app does not use GPS.</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Tilt-a-Wort listens for Tilt hydrometer broadcasts. It does not connect or pair.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Tilt-a-Wort listens for Tilt hydrometer broadcasts. It does not connect or pair.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

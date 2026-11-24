@@ -34,6 +34,20 @@ void main() {
     expect(decodeTilt(companyId: 0x0075, payload: redPayload), isNull);
   });
 
+  test('decodeTiltBeacon shares major/minor with decodeTilt', () {
+    final fromAds = decodeTilt(companyId: 0x004C, payload: redPayload)!;
+    final fromBeacon = decodeTiltBeacon(
+      uuid: 'a495bb10-c5b1-4b44-b512-1370f02d74de',
+      major: 68,
+      minor: 1016,
+    )!;
+    expect(fromBeacon.color, fromAds.color);
+    expect(fromBeacon.uuid, fromAds.uuid);
+    expect(fromBeacon.tempF, fromAds.tempF);
+    expect(fromBeacon.sg, fromAds.sg);
+    expect(fromBeacon.isPro, fromAds.isPro);
+  });
+
   test('Pink Pro heuristic minor > 5000', () {
     // temp 72.0°F → major 720; SG 1.0000 → minor 10000
     final payload = <int>[

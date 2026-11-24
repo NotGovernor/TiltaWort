@@ -35,22 +35,32 @@ String _uuid(List<int> b) {
   return s.toString().toUpperCase();
 }
 
+/// iBeacon major/minor → Tilt. Same numbers as Apple 0x004C ads.
+TiltAdvertisement? decodeTiltBeacon({
+  required String uuid,
+  required int major,
+  required int minor,
+}) {
+  final normalized = uuid.toUpperCase();
+  final color = tiltColors[normalized];
+  if (color == null) return null;
+  final isPro = minor > 5000;
+  return TiltAdvertisement(
+    color: color,
+    uuid: normalized,
+    tempF: isPro ? major / 10.0 : major.toDouble(),
+    sg: isPro ? minor / 10000.0 : minor / 1000.0,
+    isPro: isPro,
+  );
+}
+
 TiltAdvertisement? decodeTilt({required int companyId, required List<int> payload}) {
   if (companyId != 0x004C) return null;
   var p = payload;
   if (p.length >= 2 && p[0] == 0x4C && p[1] == 0x00) p = p.sublist(2);
   if (p.length < 23 || p[0] != 0x02 || p[1] != 0x15) return null;
   final uuid = _uuid(p.sublist(2, 18));
-  final color = tiltColors[uuid];
-  if (color == null) return null;
   final major = (p[18] << 8) | p[19];
   final minor = (p[20] << 8) | p[21];
-  final isPro = minor > 5000;
-  return TiltAdvertisement(
-    color: color,
-    uuid: uuid,
-    tempF: isPro ? major / 10.0 : major.toDouble(),
-    sg: isPro ? minor / 10000.0 : minor / 1000.0,
-    isPro: isPro,
-  );
+  return decodeTiltBeacon(uuid: uuid, major: major, minor: minor);
 }
