@@ -6,6 +6,10 @@ Tilt-a-Wort listens to a Tilt hydrometer floating in your beer. It shows gravity
 
 ![Home on Android](docs/screenshots/android-home.png)
 
+![Device chart on Windows](docs/screenshots/windows-device-chart.png)
+
+The device screen is the live reading plus the session chart (gravity and temperature).
+
 ## Install
 
 Downloads: [github.com/NotGovernor/TiltaWort/releases](https://github.com/NotGovernor/TiltaWort/releases)
