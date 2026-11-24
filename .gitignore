@@ -52,3 +52,9 @@ planning/vendor/
 
 # btleplug listen sidecar
 native/tilt_listen/target/
+
+# local agent plans — never commit
+.hermes/
+
+# killed 10-24 look restart — never commit
+planning/mockups/restart/
