@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:tiltawort/app.dart';
+import 'package:tiltawort/tilt/app_paths.dart';
 import 'package:tiltawort/tilt/create_scanner.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
 import 'package:tiltawort/tilt/fake_scanner.dart';
@@ -9,10 +10,8 @@ import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
 
-void main() {
-  final root = Directory(
-    '${Platform.environment['APPDATA'] ?? '.'}${Platform.pathSeparator}Tilt-a-Wort',
-  );
+Future<void> main() async {
+  final root = await resolveAppRoot();
   runApp(
     TiltawortApp(
       scanner: createScanner(),
