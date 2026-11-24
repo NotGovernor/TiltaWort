@@ -1,4 +1,21 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Listen-only BLE. Never pair, never GATT. -->
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- Android 12+: SCAN without neverForLocation. Tilt is Apple 0x004C iBeacon;
+         neverForLocation filters those ads. CONNECT declared because 12+ often
+         requires it to talk to the adapter; we never call connect. FINE_LOCATION
+         is required to receive iBeacon results on 12+ (no background location). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+    <!-- Pre-31 BLE scan used the legacy Bluetooth permissions. -->
+    <uses-permission android:name="android.permission.BLUETOOTH"
+        android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN"
+        android:maxSdkVersion="30" />
+
     <application
         android:label="tiltawort"
         android:name="${applicationName}"
