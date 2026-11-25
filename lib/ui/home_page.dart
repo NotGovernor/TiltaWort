@@ -11,6 +11,7 @@ import 'package:tiltawort/tilt/models.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
 import 'package:tiltawort/tilt/units.dart';
+import 'package:tiltawort/tilt/updates.dart';
 import 'package:tiltawort/ui/chamfer.dart';
 import 'package:tiltawort/ui/device_page.dart';
 import 'package:tiltawort/ui/home_status.dart';
@@ -31,6 +32,9 @@ class HomePage extends StatefulWidget {
     this.themeMode = ThemeMode.dark,
     this.onThemeMode,
     this.version = '1.0.0',
+    this.updateOs,
+    this.updateFetch,
+    this.onApplyUpdate,
   });
 
   final TiltScanner scanner;
@@ -43,6 +47,9 @@ class HomePage extends StatefulWidget {
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode>? onThemeMode;
   final String version;
+  final UpdateOs? updateOs;
+  final ReleaseFetch? updateFetch;
+  final Future<void> Function(UpdateOffer)? onApplyUpdate;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -239,6 +246,9 @@ class _HomePageState extends State<HomePage> {
                             onThemeMode: widget.onThemeMode ?? (_) {},
                             version: widget.version,
                             radio: _radio,
+                            os: widget.updateOs,
+                            fetch: widget.updateFetch,
+                            onApply: widget.onApplyUpdate,
                           ),
                         ),
                       );

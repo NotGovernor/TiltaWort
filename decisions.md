@@ -2,6 +2,7 @@
 
 Patrick's calls. Do not relitigate. Newest at the top.
 
+- 11-24-2026 — **Updates.** GitHub Releases, user taps Update before download. No cert. No Play Store. iOS has none.
 - 11-24-2026 — **Windows listen.** In-process cdylib (no `tilt_listen.exe` child); Android and iOS are listen-only; Linux/macOS use the cdylib only if the library is present, else stub.
 - 11-24-2026 — **Home header.** No Tilt-a-Wort wordmark/text at the top of Home. Gear stays. Icon kit C unchanged.
 - 11-24-2026 — **Android data.** Prefs + CSV live under app support (`path_provider`), not `%APPDATA%` fallback `.`. Windows stays `%APPDATA%\Tilt-a-Wort`.

@@ -14,6 +14,8 @@ The device screen is the live reading plus the session chart (gravity and temper
 
 Downloads: [github.com/NotGovernor/TiltaWort/releases](https://github.com/NotGovernor/TiltaWort/releases)
 
+Release builds check GitHub Releases for a newer tag. Windows replaces the portable folder (SmartScreen may warn again). Android opens the system installer. Not the Play Store. Not a signed Microsoft installer.
+
 ### Windows
 
 Download `Tilt-a-Wort-windows-x64.zip` from that release, unzip it, and run `tiltawort.exe`. This app is not in the Microsoft Store and is not signed. Windows SmartScreen will warn you. Click **More info**, then **Run anyway**. Turn Bluetooth on. The PC does not need to be discoverable. No pairing. No administrator account.
