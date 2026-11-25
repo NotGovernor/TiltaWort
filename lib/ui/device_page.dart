@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:tiltawort/tilt/calibrate.dart';
 import 'package:tiltawort/tilt/csv_log.dart';
 import 'package:tiltawort/tilt/history.dart';
 import 'package:tiltawort/tilt/log_runner.dart';
+import 'package:tiltawort/tilt/log_share.dart';
 import 'package:tiltawort/tilt/models.dart';
 import 'package:tiltawort/tilt/prefs.dart';
 import 'package:tiltawort/tilt/scanner.dart';
@@ -620,8 +623,11 @@ class _DevicePageState extends State<DevicePage> {
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () => widget.logs.revealFile(f),
-                                  child: Text('Reveal', style: soraMuted.copyWith(color: p.primary)),
+                                  onPressed: () => _onLogFileAction(f),
+                                  child: Text(
+                                    logFileActionLabel(defaultTargetPlatform),
+                                    style: soraMuted.copyWith(color: p.primary),
+                                  ),
                                 ),
                                 TextButton(
                                   onPressed: () async {
@@ -812,6 +818,45 @@ class _DevicePageState extends State<DevicePage> {
       if (pan > maxPan) pan = maxPan;
     }
     setState(() => _chartPan = pan);
+  }
+
+  Future<void> _onLogFileAction(File file) async {
+    final share = logFileActionIsShare(defaultTargetPlatform);
+    if (!await file.exists()) {
+      _logSnack(
+        share
+            ? 'Could not share: that log is gone.'
+            : 'Could not reveal: that log is gone.',
+      );
+      await _refreshFiles();
+      return;
+    }
+    if (share) {
+      try {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(file.path, mimeType: 'text/csv')],
+          ),
+        );
+      } catch (_) {
+        _logSnack('Could not share: the system sheet did not open.');
+        await _refreshFiles();
+      }
+      return;
+    }
+    try {
+      await widget.logs.revealFile(file);
+    } catch (_) {
+      _logSnack('Could not reveal: the file manager did not open.');
+      await _refreshFiles();
+    }
+  }
+
+  void _logSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   Future<void> _commitName() async {

@@ -246,8 +246,25 @@ class CsvLogStore {
       await reveal!(file.path);
       return;
     }
+    if (!await file.exists()) {
+      throw const FileSystemException('that log is gone');
+    }
     if (Platform.isWindows) {
       await Process.run('explorer.exe', ['/select,', file.path]);
+      return;
+    }
+    if (Platform.isMacOS) {
+      final r = await Process.run('open', ['-R', file.path]);
+      if (r.exitCode != 0) {
+        throw const FileSystemException('the file manager did not open');
+      }
+      return;
+    }
+    if (Platform.isLinux) {
+      final r = await Process.run('xdg-open', [file.parent.path]);
+      if (r.exitCode != 0) {
+        throw const FileSystemException('the file manager did not open');
+      }
     }
   }
 
