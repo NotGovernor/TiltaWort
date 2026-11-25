@@ -47,9 +47,16 @@ class _MemoryPrefs extends PrefsStore {
 class _FixedLogs extends CsvLogStore {
   _FixedLogs(super.directory, this.files);
   final List<File> files;
+  var deleted = 0;
 
   @override
   Future<List<File>> listForColor(String color) async => files;
+
+  @override
+  Future<void> deleteFile(File file) async {
+    deleted++;
+    files.remove(file);
+  }
 }
 
 Future<void> _pumpWithLog(
@@ -136,5 +143,22 @@ void main() {
     await _pumpWithLog(tester, logs: logs, platform: TargetPlatform.windows);
     expect(find.text('Reveal'), findsOneWidget);
     expect(find.text('Share'), findsNothing);
+  });
+
+  testWidgets('Delete confirm Cancel leaves the file', (tester) async {
+    await _pumpWithLog(tester, logs: logs, platform: TargetPlatform.windows);
+    final name = 'House Pale (Pink TILT) 2026-10-24 2130.csv';
+    expect(find.text(name), findsOneWidget);
+    await tester.tap(find.text('Delete'));
+    await tester.pump();
+    expect(find.text('Delete this log?'), findsOneWidget);
+    expect(find.text('This cannot be undone.'), findsOneWidget);
+    expect(find.text(name), findsWidgets);
+    expect((logs as _FixedLogs).deleted, 0);
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    expect(find.text('Delete this log?'), findsNothing);
+    expect(find.text(name), findsOneWidget);
+    expect((logs as _FixedLogs).deleted, 0);
   });
 }

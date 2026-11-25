@@ -630,13 +630,7 @@ class _DevicePageState extends State<DevicePage> {
                                   ),
                                 ),
                                 TextButton(
-                                  onPressed: () async {
-                                    await widget.logs.deleteFile(f);
-                                    if (!widget.logs.isOpenFor(_view.color)) {
-                                      await _setPrefs(_prefs.copyWith(logging: false));
-                                    }
-                                    await _refreshFiles();
-                                  },
+                                  onPressed: () => _confirmDeleteLog(f),
                                   child: Text('Delete', style: soraMuted.copyWith(color: p.muted)),
                                 ),
                               ],
@@ -764,6 +758,54 @@ class _DevicePageState extends State<DevicePage> {
     await _setPrefs(_prefs.copyWith(cal: [..._prefs.cal, CalPoint(uncalSg: u, actualSg: a)]));
     _uncal.clear();
     _actual.clear();
+  }
+
+  Future<void> _confirmDeleteLog(File file) async {
+    final p = TiltPalette.of(context);
+    final name = file.uri.pathSegments.last;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: ChamferPlate(
+            fill: p.surface,
+            edge: p.primary,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Delete this log?', style: soraTitle.copyWith(color: p.primary)),
+                const SizedBox(height: 8),
+                Text(name, style: soraBody.copyWith(color: p.ink)),
+                const SizedBox(height: 8),
+                Text('This cannot be undone.', style: soraBody.copyWith(color: p.ink)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: Text('Cancel', style: soraBody.copyWith(color: p.muted)),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: Text('Delete', style: soraBody.copyWith(color: p.primary)),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (ok != true) return;
+    await widget.logs.deleteFile(file);
+    if (!widget.logs.isOpenFor(_view.color)) {
+      await _setPrefs(_prefs.copyWith(logging: false));
+    }
+    await _refreshFiles();
   }
 
   Future<void> _waterShortcut() async {
