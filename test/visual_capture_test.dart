@@ -16,7 +16,7 @@ import 'package:tiltawort/ui/device_page.dart';
 import 'package:tiltawort/ui/home_page.dart';
 import 'package:tiltawort/ui/theme.dart';
 
-const _outDir = r'M:\AIHome\Foundry Team\jobs\t_35e41075';
+late final Directory _outDir;
 
 const _pink = TiltAdvertisement(
   color: 'Pink',
@@ -55,15 +55,18 @@ Future<void> _shot(GlobalKey key, String name) async {
       key.currentContext!.findRenderObject()! as RenderRepaintBoundary;
   final image = await boundary.toImage(pixelRatio: 1.25);
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
-  Directory(_outDir).createSync(recursive: true);
-  File('$_outDir${Platform.pathSeparator}$name')
+  Directory(_outDir.path).createSync(recursive: true);
+  File('${_outDir.path}${Platform.pathSeparator}$name')
       .writeAsBytesSync(bytes!.buffer.asUint8List());
 }
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  setUpAll(_fonts);
+  setUpAll(() async {
+    _outDir = Directory.systemTemp.createTempSync('tiltawort-visual-');
+    await _fonts();
+  });
 
   final t0 = DateTime.utc(2026, 10, 25, 12, 0, 0);
   final seed = [

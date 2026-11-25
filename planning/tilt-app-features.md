@@ -2,7 +2,7 @@
 
 Date: 10-24-2026. Spike only. No app code shipped. Zero APK / decompile.
 
-**Vendor clone (do not commit):** `M:\Git Repos\TiltaWort\planning\vendor\Tilt-Hydrometer-Framework7`  
+**Vendor clone (do not commit):** vendor clone is local and gitignored; do not commit it.  
 **Branch (primary):** `Tilt-2-Android`  
 **HEAD SHA:** `382a6e3b8cd0b7b6904b9acefa6a9094e405137b`  
 **App identity:** Play Store `com.baronbrew.tilthydrometerf7`, `config.xml` name **Tilt 2**, version **1.1.17** (`config.xml:2–3`, `www/js/app.js:36`).  
